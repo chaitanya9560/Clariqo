@@ -1,5 +1,5 @@
 <p align="center"><img src="docs/assets/clariqo-banner.svg" alt="Clariqo — Turn study material into understanding" width="100%"></p>
-<p align="center"><strong>Your notes. Your questions. Your next breakthrough.</strong></p>
+<p align="center"><strong>Your notes, questions and revision, together.</strong></p>
 <p align="center">
 <img alt="Next.js" src="https://img.shields.io/badge/Next.js-App_Router-171717?logo=nextdotjs">
 <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&amp;logoColor=white">
@@ -19,14 +19,16 @@ Read the [complete setup and deployment guide](web/README.md) before deploying. 
 
 | Page | Features |
 | --- | --- |
-| Dashboard | Saved materials, question count and quiz accuracy |
+| Dashboard | Saved documents, study-plan days, practice topics and account totals |
 | Study Materials | Read PDFs up to 20 MB, select, preview, download and reuse them |
 | Ask AI | Normal conversation, PDF-first answers, PDF-only mode and internet search |
 | Quiz | 5 or 10 questions, difficulty, explanations and scored answers |
+| Flashcards | Saved 5- or 10-card decks, answer reveal and review progress |
+| Mind Maps | Expandable concept trees, explanations, PDF references and outline downloads |
 | My Progress | Saved quiz scores and subtopics that need more practice |
 | Study Plan | Up to 14 days, exam date, study time, level, weak topics and a completion checklist |
 
-On this account feature branch, email/password sign-in requires email verification. PDFs are saved in private Supabase Storage; chat, quiz results and the current plan are saved to the signed-in account. Google sign-in is deferred. Custom SMTP is configured. Real inbox delivery still needs a sign-up check.
+Email/password sign-in requires email verification. PDFs are saved in private Supabase Storage; chat, quiz results, plans, flashcards and mind maps are saved to the signed-in account. Google sign-in is deferred. Custom SMTP is configured. Real inbox delivery still needs a sign-up check.
 
 ## Architecture
 
@@ -38,7 +40,7 @@ flowchart LR
     Search --> API[Bounded text + question]
     API --> Server[Next.js server route]
     Server --> Groq[Groq API]
-    Groq --> Answer[Markdown answer / quiz / plan]
+    Groq --> Answer[Answers / quizzes / plans / study tools]
     Answer --> Storage
 ```
 
@@ -64,16 +66,16 @@ npm test
 npm run build
 ```
 
-The account branch passed **58 automated tests**, strict TypeScript checks, and real two-account database/storage isolation tests. Supabase database security advisors returned no issues. Email delivery is not yet verified. The earlier Vercel version passed a production build. Live Groq chat, PDF-context answers, quizzes, structured plans and internet search also passed. The production dependency audit reported no vulnerabilities at the time of the check.
+The study-desk release passes **82 automated tests**, strict TypeScript checks and a production build. Real Groq tests covered PDF flashcards, general-topic flashcards and a 12-concept mind map with validated excerpt references. Browser review covered desktop/mobile UI previews and local login controls. Existing account records remain compatible with the optional new study-tool fields.
 
-Browser visual checks and real browser PDF extraction remain unverified because browser control was disabled. See the [verification report](docs/VERCEL_VERIFICATION.md) and [web guide](web/README.md) for the boundaries of these checks.
+These checks do not guarantee factual correctness of AI content. Full signed-in browser testing and inbox delivery were not repeated for this release. Internet search was not re-certified in this pass because earlier diagnostics hit provider limits. The last Supabase advisor check flagged disabled leaked-password protection, which requires a paid plan; this project remains on Free. See the [website audit](docs/WEBSITE_TEST_2026-10-31.md), [UI review](docs/STUDY_DESK_UI.md) and [study-tool notes](docs/STUDY_TOOLS.md) for test boundaries.
 
 ## Project structure
 
 ```text
 web/
 ├── app/                 # Next.js pages, styles and server API
-├── components/          # Interactive six-page study interface
+├── components/          # Interactive eight-page study interface
 ├── lib/                 # PDF reading, storage, retrieval, AI and validation
 ├── tests/               # Domain, API and browser-storage tests
 ├── .env.example         # Placeholder server settings

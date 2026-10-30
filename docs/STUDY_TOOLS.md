@@ -1,6 +1,6 @@
 # Flashcards and mind maps
 
-Implemented on `feature/study-desk-ui`; the production branch is unchanged.
+Developed on `feature/study-desk-ui`; released through `vercel-migration`.
 
 ## Flashcards
 
@@ -32,4 +32,4 @@ Deck review is a simple self-rating system. It is not spaced repetition and does
 - Automated checks cover legacy saved data, round-trip deck/map storage validation, set quotas, progress IDs, source references, duplicate cards, invalid graph structures, request validation, authenticated routing and provider failures.
 - Real Groq tests used synthetic Java notes: five valid PDF flashcards, five structured general-topic cards without invented PDF references, and a 12-concept map with valid references after enabling strict JSON response schemas.
 - Local interactive browser preview uses the actual React components with synthetic fixtures and an in-memory mocked generation callback. Reviewed answer reveal, known-card marking, review filtering, 10-card creation, deck switching, map creation, concept selection, branch collapse/expansion, Markdown map download and desktop/mobile layout. It does not create production accounts or test a signed-in cloud round-trip.
-- Changes stay on the feature branch until merged/deployed. The preview is not the production site.
+- The interactive local preview uses synthetic data and is not the production site.

@@ -1,6 +1,6 @@
 # Study desk UI
 
-Branch: `feature/study-desk-ui`. The production branch is unchanged.
+Developed on `feature/study-desk-ui`; released through `vercel-migration`.
 
 The visual direction uses warm paper surfaces, charcoal text, a forest green accent, serif headings and simple document rows. It avoids gradients, floating decorations, repeated sparkle icons and oversized marketing panels.
 

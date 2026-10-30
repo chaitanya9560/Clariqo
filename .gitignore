@@ -88,3 +88,6 @@ node_modules/
 # Keep the Next.js source library (the generic Python lib/ rule above excludes it).
 !web/lib/
 !web/lib/**
+
+# Supabase CLI local project cache
+supabase/.temp/

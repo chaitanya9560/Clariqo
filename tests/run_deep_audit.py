@@ -1,6 +1,7 @@
 """Run isolated regression and audit expectations; preserve failures as evidence."""
 import ast,hashlib,json,sys,threading,time,unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import test_working_flows as regression
 import test_deep_audit as edge
 from test_learning_features import LearningFeatureTests
@@ -8,7 +9,7 @@ from test_chat_routing import ChatRoutingTests
 from test_safe_uploads import SafeUploadTests
 from test_study_plan_format import PlanFormatTests
 from test_release_audit import ReleaseAuditTests
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parents[1]
 MODULES=['app.py','config.py','rag.py','quiz.py','memory.py','study_plan.py','study_chat.py','tools.py','ui_components.py','study_uploads.py']
 called=set()
 SOURCE_FILES={str(ROOT/m) for m in MODULES}

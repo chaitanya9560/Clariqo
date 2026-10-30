@@ -1,6 +1,6 @@
 """Regression tests with temporary data and clearly mocked AI responses.
-Run: .venv/bin/python test_working_flows.py
-These tests do not establish live Gemini availability or answer quality.
+Run from the project root: python -m unittest discover -s tests -v
+These tests do not establish live provider availability or answer quality.
 """
 import copy
 import json

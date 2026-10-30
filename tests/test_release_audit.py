@@ -66,7 +66,7 @@ class ReleaseAuditTests(unittest.TestCase):
         self.assertEqual(rag.search_study_material('Cloud',top_k=0,file_name='cloud.pdf'),[])
 
     def test_git_excludes_private_runtime_and_generated_data(self):
-        project=Path(__file__).resolve().parent
+        project=Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as tmp:
             subprocess.run(['git','init','-q',tmp],check=True,capture_output=True)
             paths=['.env','data/memory.json','data/memory.before-saved-chat-and-plans.json','data/memory.json.invalid-abcd','uploads/book.pdf','test_results/deep-live.json','.runtime/python/bin/python','.model-cache/model.bin']

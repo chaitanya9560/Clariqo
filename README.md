@@ -46,7 +46,7 @@ The exact lock file above records the tested Intel Mac environment. `requirement
 Run the isolated, mocked regression and edge-case tests from the project directory:
 
 ```sh
-python -m unittest discover -v
+python -m unittest discover -s tests -v
 ```
 
 The tests use temporary learning data and synthetic PDF fixtures. They do not establish live provider availability or universal accuracy of generated answers. They require neither a real API key nor the user's PDFs/model cache. Reproducible plan-format fixtures are included under `tests/fixtures/`.
@@ -54,10 +54,10 @@ The tests use temporary learning data and synthetic PDF fixtures. They do not es
 For a structured report and function-call inventory:
 
 ```sh
-python run_deep_audit.py
+python tests/run_deep_audit.py
 ```
 
-Generated reports go to `test_results/`, which is ignored by Git. `deep_live_audit.py` is a manual live-service audit that can send sample prompts and locally saved textbook excerpts to the configured provider; use it only with permission for those documents. It is not run by the offline suite.
+Generated reports go to `test_results/`, which is ignored by Git.
 
 ## Saved files and privacy
 
@@ -74,6 +74,7 @@ This version has one local learning profile. Separate student accounts, cross-de
 | `rag.py`, `study_uploads.py` | PDF extraction, vectors and safe replacement |
 | `quiz.py`, `study_plan.py`, `tools.py` | Study activities and tool routing |
 | `memory.py` | Local learning history and recovery |
+| `tests/` | Automated tests, sample PDFs and test fixtures |
 
 ## Upstream
 

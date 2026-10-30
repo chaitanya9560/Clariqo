@@ -14,7 +14,7 @@ class PlanFormatTests(unittest.TestCase):
         self.addCleanup(self.fx.doCleanups)
 
     def recorded(self):
-        return (Path(__file__).resolve().parent / 'tests/fixtures/three_day_plan.md').read_text()
+        return (Path(__file__).resolve().parent / 'fixtures/three_day_plan.md').read_text()
 
     def test_actual_failed_reply_parses_into_three_days(self):
         days=study_plan.parse_study_plan_to_days(self.recorded(),['Elasticity'])

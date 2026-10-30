@@ -1,0 +1,50 @@
+name: Bug report
+description: Report something that is not working in Clariqo.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove API keys, personal PDFs, private chats and other sensitive information before posting."
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Setup or startup
+        - Dashboard
+        - Study Materials
+        - Ask AI
+        - Quiz
+        - My Progress
+        - Study Plan
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do before the problem appeared?
+      placeholder: "1. Open...\n2. Select...\n3. Click..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include a redacted error message or screenshot if helpful.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, browser and commit if known.
+    validations:
+      required: true

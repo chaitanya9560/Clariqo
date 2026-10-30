@@ -50,7 +50,7 @@ class ReleaseAuditTests(unittest.TestCase):
         original=rag.METADATA_FILE.read_text()
         for content in ['null','[]',json.dumps([{'text':'missing fields'}]),original[:-1]+','+original[1:]]:
             with self.subTest(content=content[:30]):
-                rag.METADATA_FILE.write_text(content);rag._FAISS_INDEX=None;rag._CHUNKS_METADATA=[]
+                rag.METADATA_FILE.write_text(content);rag.get_vector_state().index=None;rag.get_vector_state().metadata=[]
                 self.assertFalse(rag.get_vector_store_status()['is_ready'])
                 self.assertEqual(rag.search_study_material('Cloud'),[])
 

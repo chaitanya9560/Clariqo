@@ -51,6 +51,13 @@ PAGES = [
     "📅 Study Plan"
 ]
 
+from workspace import current_workspace
+
+if current_workspace() is not None:
+    st.info("Public demo: your PDFs, chat and progress belong to this browser session. "
+            "This temporary workspace can reset when the session ends or the server restarts. "
+            "Relevant prompts and PDF excerpts are sent to the AI provider when you use AI features.")
+
 saved_learning = memory.load_memory()
 
 if "current_page" not in st.session_state:
@@ -399,7 +406,7 @@ elif st.session_state.current_page == "📚 Study Materials":
             for doc in details:
                 ui.render_document_card(doc)
                 filename = doc["file_name"]
-                stored_pdf = config.UPLOADS_DIR / Path(filename).name
+                stored_pdf = config.get_uploads_dir() / Path(filename).name
                 selected = st.session_state.active_material == filename
                 if st.button("Selected PDF ✓" if selected else "Use this PDF", key=f"use_pdf_{filename}", disabled=selected):
                     st.session_state.active_material = filename
@@ -429,7 +436,7 @@ elif st.session_state.current_page == "📚 Study Materials":
 
             preview = st.session_state.preview_material
             if preview:
-                preview_path = config.UPLOADS_DIR / Path(preview).name
+                preview_path = config.get_uploads_dir() / Path(preview).name
                 if preview_path.is_file():
                     st.write(f"Preview: {preview}")
                     try:

@@ -13,6 +13,7 @@ import os
 import sys
 import re
 import json
+import threading
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
@@ -38,6 +39,7 @@ from config import (
     generate_text
 )
 import memory
+from workspace import VectorState, current_workspace, workspace_locked
 
 # Persistent index file paths
 FAISS_INDEX_FILE = VECTOR_STORE_DIR / "index.faiss"
@@ -45,8 +47,22 @@ METADATA_FILE = VECTOR_STORE_DIR / "chunks_metadata.json"
 
 # In-memory singletons
 _EMBEDDING_MODEL = None
-_FAISS_INDEX = None
-_CHUNKS_METADATA: List[Dict[str, Any]] = []
+_EMBEDDING_LOCK = threading.Lock()
+_LOCAL_VECTOR_STATE = VectorState()
+
+def get_vector_state():
+    workspace = current_workspace()
+    return workspace.vectors if workspace is not None else _LOCAL_VECTOR_STATE
+
+
+def get_store_paths():
+    workspace = current_workspace()
+    if workspace is not None:
+        return {'directory': workspace.vector_store,
+                'index': workspace.vector_store / 'index.faiss',
+                'metadata': workspace.vector_store / 'chunks_metadata.json'}
+    return {'directory': VECTOR_STORE_DIR, 'index': FAISS_INDEX_FILE, 'metadata': METADATA_FILE}
+
 
 def get_embedding_model():
     """
@@ -54,8 +70,10 @@ def get_embedding_model():
     """
     global _EMBEDDING_MODEL
     if _EMBEDDING_MODEL is None:
-        from sentence_transformers import SentenceTransformer
-        _EMBEDDING_MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        with _EMBEDDING_LOCK:
+            if _EMBEDDING_MODEL is None:
+                from sentence_transformers import SentenceTransformer
+                _EMBEDDING_MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return _EMBEDDING_MODEL
 
 def clean_text(text: str) -> str:
@@ -93,6 +111,8 @@ def extract_text_from_pdf(pdf_path: str | Path) -> List[Dict[str, Any]]:
         raise ValueError(f"Could not read PDF file '{path.name}'. File may be corrupt or encrypted: {e}")
 
     num_pages = len(reader.pages)
+    if current_workspace() is not None and num_pages > 200:
+        raise ValueError('The public demo accepts PDFs with up to 200 pages.')
     if num_pages == 0:
         raise ValueError(f"PDF '{path.name}' contains 0 pages.")
 
@@ -105,6 +125,8 @@ def extract_text_from_pdf(pdf_path: str | Path) -> List[Dict[str, Any]]:
         cleaned = clean_text(page_text)
         if cleaned:
             total_text_length += len(cleaned)
+            if current_workspace() is not None and total_text_length > 300000:
+                raise ValueError('This PDF has too much text for the public demo. Upload a smaller section.')
             pages_data.append({
                 "page": idx,
                 "text": cleaned
@@ -179,36 +201,40 @@ def chunk_text(
 
     return chunks
 
+@workspace_locked
 def save_vector_store():
     """
     Persists FAISS index and chunk metadata to disk.
     """
-    global _FAISS_INDEX, _CHUNKS_METADATA
+    state = get_vector_state()
+    paths = get_store_paths()
     import faiss
 
-    if _FAISS_INDEX is not None:
-        VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
-        faiss.write_index(_FAISS_INDEX, str(FAISS_INDEX_FILE))
+    if state.index is not None:
+        paths['directory'].mkdir(parents=True, exist_ok=True)
+        faiss.write_index(state.index, str(paths['index']))
 
-        with open(METADATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(_CHUNKS_METADATA, f, indent=2, ensure_ascii=False)
+        with open(paths['metadata'], "w", encoding="utf-8") as f:
+            json.dump(state.metadata, f, indent=2, ensure_ascii=False)
 
+@workspace_locked
 def load_vector_store():
     """
     Loads FAISS index and chunk metadata from disk if available.
     """
-    global _FAISS_INDEX, _CHUNKS_METADATA
+    state = get_vector_state()
+    paths = get_store_paths()
     import faiss
 
-    if _FAISS_INDEX is None and FAISS_INDEX_FILE.exists() and METADATA_FILE.exists():
+    if state.index is None and paths['index'].exists() and paths['metadata'].exists():
         try:
-            _FAISS_INDEX = faiss.read_index(str(FAISS_INDEX_FILE))
-            with open(METADATA_FILE, "r", encoding="utf-8") as f:
-                _CHUNKS_METADATA = json.load(f)
-            if (not isinstance(_CHUNKS_METADATA, list) or len(_CHUNKS_METADATA) != _FAISS_INDEX.ntotal
-                    or _FAISS_INDEX.metric_type != faiss.METRIC_INNER_PRODUCT):
+            state.index = faiss.read_index(str(paths['index']))
+            with open(paths['metadata'], "r", encoding="utf-8") as f:
+                state.metadata = json.load(f)
+            if (not isinstance(state.metadata, list) or len(state.metadata) != state.index.ntotal
+                    or state.index.metric_type != faiss.METRIC_INNER_PRODUCT):
                 raise ValueError('Index and metadata do not match. Re-index the saved PDFs.')
-            for chunk in _CHUNKS_METADATA:
+            for chunk in state.metadata:
                 if (not isinstance(chunk, dict) or not isinstance(chunk.get('file_name'), str)
                         or not isinstance(chunk.get('text'), str) or not chunk['text'].strip()
                         or type(chunk.get('page')) is not int or chunk['page'] < 1
@@ -216,27 +242,30 @@ def load_vector_store():
                     raise ValueError('Invalid document metadata. Re-index the saved PDFs.')
         except Exception as e:
             print(f"Warning: Could not load existing vector store: {e}")
-            _FAISS_INDEX = None
-            _CHUNKS_METADATA = []
+            state.index = None
+            state.metadata = []
 
+@workspace_locked
 def clear_vector_store():
     """
     Clears the active in-memory and on-disk vector store.
     """
-    global _FAISS_INDEX, _CHUNKS_METADATA
-    _FAISS_INDEX = None
-    _CHUNKS_METADATA = []
-    if FAISS_INDEX_FILE.exists():
+    state = get_vector_state()
+    paths = get_store_paths()
+    state.index = None
+    state.metadata = []
+    if paths['index'].exists():
         try:
-            FAISS_INDEX_FILE.unlink()
+            paths['index'].unlink()
         except OSError:
             pass
-    if METADATA_FILE.exists():
+    if paths['metadata'].exists():
         try:
-            METADATA_FILE.unlink()
+            paths['metadata'].unlink()
         except OSError:
             pass
 
+@workspace_locked
 def process_and_index_pdf(pdf_path: str | Path, original_filename: str, *, record_topic: bool = True) -> Dict[str, Any]:
     """
     Full pipeline to ingest a PDF:
@@ -247,7 +276,7 @@ def process_and_index_pdf(pdf_path: str | Path, original_filename: str, *, recor
     5. Persist index and metadata
     6. Record topic in student memory
     """
-    global _FAISS_INDEX, _CHUNKS_METADATA
+    state = get_vector_state()
     import faiss
 
     # Extract text
@@ -264,7 +293,7 @@ def process_and_index_pdf(pdf_path: str | Path, original_filename: str, *, recor
     # Generate embeddings
     embedder = get_embedding_model()
     chunk_texts = [c["text"] for c in chunks]
-    embeddings = embedder.encode(chunk_texts, convert_to_numpy=True, show_progress_bar=False)
+    embeddings = embedder.encode(chunk_texts, convert_to_numpy=True, show_progress_bar=False, batch_size=16)
 
     # Cast to float32 and normalize for cosine similarity via inner product
     embeddings = embeddings.astype(np.float32)
@@ -274,21 +303,21 @@ def process_and_index_pdf(pdf_path: str | Path, original_filename: str, *, recor
 
     # Initialize or append to FAISS index
     load_vector_store()
-    if _FAISS_INDEX is None:
-        _FAISS_INDEX = faiss.IndexFlatIP(dimension)
-        _CHUNKS_METADATA = []
-    elif any(c.get("file_name") == original_filename for c in _CHUNKS_METADATA):
+    if state.index is None:
+        state.index = faiss.IndexFlatIP(dimension)
+        state.metadata = []
+    elif any(c.get("file_name") == original_filename for c in state.metadata):
         # Re-uploading a document replaces its old passages instead of duplicating them.
-        keep = [i for i, c in enumerate(_CHUNKS_METADATA) if c.get("file_name") != original_filename]
-        previous = _FAISS_INDEX.reconstruct_n(0, _FAISS_INDEX.ntotal)
+        keep = [i for i, c in enumerate(state.metadata) if c.get("file_name") != original_filename]
+        previous = state.index.reconstruct_n(0, state.index.ntotal)
         replacement = faiss.IndexFlatIP(dimension)
         if keep:
             replacement.add(np.ascontiguousarray(previous[keep], dtype=np.float32))
-        _FAISS_INDEX = replacement
-        _CHUNKS_METADATA = [_CHUNKS_METADATA[i] for i in keep]
+        state.index = replacement
+        state.metadata = [state.metadata[i] for i in keep]
 
-    _FAISS_INDEX.add(embeddings)
-    _CHUNKS_METADATA.extend(chunks)
+    state.index.add(embeddings)
+    state.metadata.extend(chunks)
 
     # Save vector store to disk
     save_vector_store()
@@ -302,28 +331,31 @@ def process_and_index_pdf(pdf_path: str | Path, original_filename: str, *, recor
         "file_name": original_filename,
         "total_pages": total_pages,
         "total_chunks": len(chunks),
-        "total_index_size": len(_CHUNKS_METADATA),
+        "total_index_size": len(state.metadata),
         "status": "Success"
     }
 
+@workspace_locked
 def get_vector_store_status() -> Dict[str, Any]:
     """
     Returns summary statistics for the vector database.
     """
+    state = get_vector_state()
     load_vector_store()
-    indexed_files = list({c.get("file_name", "Unknown") for c in _CHUNKS_METADATA})
+    indexed_files = list({c.get("file_name", "Unknown") for c in state.metadata})
     return {
-        "is_ready": _FAISS_INDEX is not None and _FAISS_INDEX.ntotal > 0,
-        "total_chunks": len(_CHUNKS_METADATA),
+        "is_ready": state.index is not None and state.index.ntotal > 0,
+        "total_chunks": len(state.metadata),
         "indexed_files": indexed_files
     }
 
+@workspace_locked
 def search_study_material(query: str, top_k: int = TOP_K_RESULTS, file_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Converts query into embedding, searches FAISS IndexFlatIP,
     and returns the top_k most relevant chunks with similarity scores.
     """
-    global _FAISS_INDEX, _CHUNKS_METADATA
+    state = get_vector_state()
     import faiss
 
     if type(top_k) is not int:
@@ -332,24 +364,24 @@ def search_study_material(query: str, top_k: int = TOP_K_RESULTS, file_name: Opt
         return []
 
     load_vector_store()
-    if _FAISS_INDEX is None or _FAISS_INDEX.ntotal == 0:
+    if state.index is None or state.index.ntotal == 0:
         return []
 
     embedder = get_embedding_model()
     query_vec = embedder.encode([query], convert_to_numpy=True)
     query_vec = query_vec.astype(np.float32)
-    if query_vec.ndim != 2 or query_vec.shape != (1, _FAISS_INDEX.d) or not np.isfinite(query_vec).all():
+    if query_vec.ndim != 2 or query_vec.shape != (1, state.index.d) or not np.isfinite(query_vec).all():
         raise ValueError('The embedding model does not match the saved index. Re-index your PDFs with the current model.')
     faiss.normalize_L2(query_vec)
 
-    k = _FAISS_INDEX.ntotal if file_name else min(top_k, _FAISS_INDEX.ntotal)
-    scores, indices = _FAISS_INDEX.search(query_vec, k)
+    k = state.index.ntotal if file_name else min(top_k, state.index.ntotal)
+    scores, indices = state.index.search(query_vec, k)
 
     results = []
     for score, idx in zip(scores[0], indices[0]):
-        if idx < 0 or idx >= len(_CHUNKS_METADATA):
+        if idx < 0 or idx >= len(state.metadata):
             continue
-        chunk = _CHUNKS_METADATA[idx].copy()
+        chunk = state.metadata[idx].copy()
         if file_name and chunk.get("file_name") != file_name:
             continue
         chunk["score"] = float(score)
@@ -359,29 +391,31 @@ def search_study_material(query: str, top_k: int = TOP_K_RESULTS, file_name: Opt
 
     return results
 
+@workspace_locked
 def retrieve_answer_context(query: str, top_k: int = TOP_K_RESULTS, file_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """Keep a matching worked example and its continuation together."""
+    state = get_vector_state()
     matches = search_study_material(query, top_k=top_k, file_name=file_name)
     words = re.findall(r"\w+", query.lower())
     explicit_reference = re.search(r"\b(example|question|problem)\s+\d+\b", query, re.IGNORECASE)
     if len(words) < 4 and not explicit_reference:
         return matches
     phrase = re.compile(r"\W+".join(re.escape(word) for word in words), re.IGNORECASE)
-    anchors = [(i, phrase.search(c["text"])) for i, c in enumerate(_CHUNKS_METADATA)
+    anchors = [(i, phrase.search(c["text"])) for i, c in enumerate(state.metadata)
                if not file_name or c.get("file_name") == file_name]
     anchors = [(i, match) for i, match in anchors if match]
     if not anchors:
         return matches
 
     scores = {(c.get("file_name"), c.get("chunk_id")): c.get("score", 0.0) for c in matches}
-    anchor_idx, match = max(anchors, key=lambda pair: scores.get((_CHUNKS_METADATA[pair[0]].get("file_name"), _CHUNKS_METADATA[pair[0]].get("chunk_id")), 0.0))
-    anchor = _CHUNKS_METADATA[anchor_idx]
+    anchor_idx, match = max(anchors, key=lambda pair: scores.get((state.metadata[pair[0]].get("file_name"), state.metadata[pair[0]].get("chunk_id")), 0.0))
+    anchor = state.metadata[anchor_idx]
     headings = list(re.finditer(r"\b(?:Example|Question|Problem)\s+\d+\b", anchor["text"][:match.start()], re.IGNORECASE))
     start = headings[-1].start() if headings else match.start()
     result = []
     previous_text = ""
-    for idx in range(anchor_idx, len(_CHUNKS_METADATA)):
-        chunk = _CHUNKS_METADATA[idx]
+    for idx in range(anchor_idx, len(state.metadata)):
+        chunk = state.metadata[idx]
         if chunk.get("file_name") != anchor.get("file_name") or chunk.get("page", 0) > anchor.get("page", 0) + 1:
             break
         text = chunk["text"][start:] if idx == anchor_idx else chunk["text"]
@@ -500,11 +534,13 @@ def answer_question(query: str, top_k: int = TOP_K_RESULTS, file_name: Optional[
         "retrieved_context": context_text
     }
 
+@workspace_locked
 def get_syllabus_context(file_name=None, max_chars=12000):
     """Return source-labelled material extracts, sharing space across saved PDFs."""
+    state = get_vector_state()
     load_vector_store()
     groups = {}
-    for chunk in _CHUNKS_METADATA:
+    for chunk in state.metadata:
         if not file_name or chunk.get('file_name') == file_name:
             groups.setdefault(chunk['file_name'], []).append(chunk)
     if file_name and not groups:
@@ -530,18 +566,20 @@ def get_syllabus_context(file_name=None, max_chars=12000):
     return {'text': '\n\n'.join(blocks), 'sources': sources, 'truncated': truncated}
 
 
+@workspace_locked
 def get_indexed_files_details() -> List[Dict[str, Any]]:
     """
     Returns aggregated metadata for each indexed file:
     filename, total_chunks, total_pages, and indexed_status.
     Used for rendering professional document cards in the UI.
     """
+    state = get_vector_state()
     load_vector_store()
-    if not _CHUNKS_METADATA:
+    if not state.metadata:
         return []
 
     file_map: Dict[str, Dict[str, Any]] = {}
-    for c in _CHUNKS_METADATA:
+    for c in state.metadata:
         fname = c.get("file_name", "Unknown Document")
         if fname not in file_map:
             file_map[fname] = {

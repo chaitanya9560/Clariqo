@@ -137,7 +137,10 @@ Open **http://127.0.0.1:8501/** in your browser. Keep the server running while y
 
 ```text
 Clariqo/
-├── app.py                  # Pages and navigation
+├── app.py                  # Local app: pages and navigation
+├── cloud/                  # Public cloud entrypoint and Linux dependencies
+├── cloud_app.py            # Bind a private workspace to each browser session
+├── workspace.py            # Visitor storage, context and demo limits
 ├── ui_components.py        # Styling and display helpers
 ├── config.py               # Provider settings and API requests
 ├── study_chat.py           # Conversation and question routing
@@ -164,7 +167,7 @@ From the project root, with the virtual environment active:
 python -m unittest discover -s tests -v
 ```
 
-The latest local cleanup check passed **125 automated tests**. This is a recorded local result, not a hosted CI status. The suite uses temporary data, synthetic PDF fixtures and mocked AI calls; it does not need your real key or personal PDFs, and it does not prove live model availability or answer accuracy.
+The latest local check passed **134 automated tests**, including regression and visitor-isolation checks. This is a recorded local result, not a hosted CI status. The suite uses temporary data, synthetic PDF fixtures and mocked AI calls; it does not need your real key or personal PDFs, and it does not prove live model availability or answer accuracy.
 
 For a structured test report and function-call inventory:
 
@@ -173,6 +176,16 @@ python tests/run_deep_audit.py
 ```
 
 Generated reports are written to `test_results/` and excluded from Git.
+
+## Public demo deployment
+
+Use the dedicated **`cloud/app.py`** entrypoint on Streamlit Community Cloud, with **Python 3.11**. Its adjacent `cloud/requirements.txt` selects Linux CPU dependencies rather than the Intel Mac lock file.
+
+Each browser session gets a separate temporary PDF folder, FAISS index, chat and learning history. Only the embedding model is shared. This is **session isolation, not student accounts**: a disconnected or new session and server restarts can lose that temporary work. The original `app.py` remains the local, saved-profile version.
+
+The public demo caps each session at 5 PDFs / 50 MB combined; individual files remain limited to 20 MB, 200 pages and 300,000 extracted text characters. It also caps AI calls at 60 per hour per session; routing and answering can use separate calls. These are basic demo limits, not abuse-proof controls or a provider quota guarantee.
+
+Follow [the deployment guide](docs/DEPLOYMENT.md) for hosting fields and secrets. Never upload your local `.env` or personal PDFs to deploy.
 
 ## Data and privacy
 
@@ -186,7 +199,7 @@ Memory writes are atomic. On handled PDF-replacement failures, the original docu
 
 ## Current limits
 
-- **One local profile:** no login, separate student accounts or cross-device sync.
+- **No student accounts:** local mode uses one saved profile; cloud demo mode separates temporary browser sessions. There is no cross-device sync.
 - **Text PDFs:** scanned pages need OCR, which is not included. Equations and complex layouts may extract imperfectly.
 - **AI accuracy:** generated answers, questions and plans can contain mistakes; source links do not guarantee correctness.
 - **Context limits:** long study material may only be included partially. Vague follow-up questions in PDF-only mode can miss the intended passage.

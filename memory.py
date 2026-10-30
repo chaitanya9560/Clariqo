@@ -11,6 +11,12 @@ from urllib.parse import urlsplit
 from functools import wraps
 from typing import Dict, Any, List
 from config import MEMORY_FILE
+from workspace import current_workspace
+
+def _memory_file():
+    workspace = current_workspace()
+    return workspace.memory_file if workspace is not None else MEMORY_FILE
+
 
 DEFAULT_MEMORY_STRUCTURE = {
     'topics_studied': [], 'quiz_history': [], 'weak_topics': [],
@@ -126,15 +132,15 @@ def _normalize(data):
 @_locked
 def save_memory(data):
     """Replace the JSON atomically; a failed write leaves the previous file intact."""
-    MEMORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _memory_file().parent.mkdir(parents=True, exist_ok=True)
     staged = None
     try:
-        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=MEMORY_FILE.parent, prefix='.memory-', suffix='.tmp', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=_memory_file().parent, prefix='.memory-', suffix='.tmp', delete=False) as f:
             staged = f.name
             json.dump(data, f, indent=2, ensure_ascii=False, allow_nan=False)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(staged, MEMORY_FILE)
+        os.replace(staged, _memory_file())
     finally:
         if staged is not None:
             try: os.unlink(staged)
@@ -143,13 +149,13 @@ def save_memory(data):
 @_locked
 def load_memory():
     raw = None
-    if MEMORY_FILE.exists():
+    if _memory_file().exists():
         try:
-            raw = json.loads(MEMORY_FILE.read_text(encoding='utf-8'), parse_constant=lambda _: None)
+            raw = json.loads(_memory_file().read_text(encoding='utf-8'), parse_constant=lambda _: None)
         except (json.JSONDecodeError, UnicodeDecodeError):
             # Preserve the unreadable file for recovery instead of silently losing it.
-            backup = MEMORY_FILE.with_name(f'{MEMORY_FILE.name}.invalid-{uuid.uuid4().hex[:8]}')
-            backup.write_bytes(MEMORY_FILE.read_bytes())
+            backup = _memory_file().with_name(f'{_memory_file().name}.invalid-{uuid.uuid4().hex[:8]}')
+            backup.write_bytes(_memory_file().read_bytes())
     normalized = _normalize(raw)
     if raw != normalized:
         save_memory(normalized)

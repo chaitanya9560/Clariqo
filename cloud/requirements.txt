@@ -1,0 +1,16 @@
+# Linux CPU wheels; deploy cloud/app.py with Python 3.11.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2+cpu
+torchvision==0.17.2+cpu
+streamlit==1.45.1
+sentence-transformers==3.4.1
+transformers==4.46.3
+numpy==1.26.4
+faiss-cpu==1.8.0
+pypdf>=4.0,<7
+pypdfium2>=4.30,<6
+python-dotenv>=1.0,<2
+requests>=2.31,<3
+pandas<3
+pyarrow<20
+altair<6

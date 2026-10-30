@@ -29,7 +29,7 @@ class SafeUploadTests(unittest.TestCase):
         for p,data in self.before.items():self.assertEqual(p.read_bytes(),data)
         self.assertEqual(memory.load_memory(),self.original_memory)
         self.assertFalse(list(self.root.glob('.upload-*')))
-        rag._FAISS_INDEX=None;rag._CHUNKS_METADATA=[]
+        rag.get_vector_state().index=None;rag.get_vector_state().metadata=[]
         self.assertIn('original material',rag.search_study_material('cloud')[0]['text'])
 
     def test_corrupt_replacement_preserves_original_and_index(self):
@@ -65,7 +65,7 @@ class SafeUploadTests(unittest.TestCase):
         result=study_uploads.save_and_index_pdf(upload)
         self.assertEqual(self.saved.read_bytes(),expected)
         self.assertEqual(result['file_name'],'notes.pdf')
-        rag._FAISS_INDEX=None;rag._CHUNKS_METADATA=[]
+        rag.get_vector_state().index=None;rag.get_vector_state().metadata=[]
         texts=' '.join(x['text'] for x in rag.search_study_material('cloud',file_name='notes.pdf'))
         self.assertIn('replacement material',texts)
         self.assertNotIn('original material',texts)

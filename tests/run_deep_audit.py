@@ -9,8 +9,9 @@ from test_chat_routing import ChatRoutingTests
 from test_safe_uploads import SafeUploadTests
 from test_study_plan_format import PlanFormatTests
 from test_release_audit import ReleaseAuditTests
+from test_cloud_sessions import CloudSessionTests
 ROOT=Path(__file__).resolve().parents[1]
-MODULES=['app.py','config.py','rag.py','quiz.py','memory.py','study_plan.py','study_chat.py','tools.py','ui_components.py','study_uploads.py']
+MODULES=['app.py','config.py','rag.py','quiz.py','memory.py','study_plan.py','study_chat.py','tools.py','ui_components.py','study_uploads.py','workspace.py','cloud_app.py']
 called=set()
 SOURCE_FILES={str(ROOT/m) for m in MODULES}
 def profile(frame,event,arg):
@@ -32,7 +33,7 @@ class AuditResult(unittest.TextTestResult):
 
 suite=unittest.TestSuite()
 suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(regression))
-for cls in (LearningFeatureTests, ChatRoutingTests, SafeUploadTests, PlanFormatTests, ReleaseAuditTests, edge.DeepAudit):
+for cls in (LearningFeatureTests, ChatRoutingTests, SafeUploadTests, PlanFormatTests, ReleaseAuditTests, CloudSessionTests, edge.DeepAudit):
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(cls))
 suite.addTests(edge.UploadAndRenderingAudit(n) for n in edge.UploadAndRenderingAudit.__dict__ if n.startswith('test_'))
 (ROOT/'test_results').mkdir(exist_ok=True)

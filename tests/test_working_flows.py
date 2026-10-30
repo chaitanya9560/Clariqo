@@ -62,8 +62,8 @@ class WorkingFlows(unittest.TestCase):
             patch.object(rag, 'VECTOR_STORE_DIR', self.index_dir),
             patch.object(rag, 'FAISS_INDEX_FILE', self.index_dir / 'index.faiss'),
             patch.object(rag, 'METADATA_FILE', self.index_dir / 'chunks_metadata.json'),
-            patch.object(rag, '_FAISS_INDEX', None),
-            patch.object(rag, '_CHUNKS_METADATA', []),
+            patch.object(rag.get_vector_state(), 'index', None),
+            patch.object(rag.get_vector_state(), 'metadata', []),
             patch.object(rag, 'get_embedding_model', return_value=FixtureEmbedder()),
             patch.object(config, 'UPLOADS_DIR', self.root),
         ]
@@ -110,8 +110,8 @@ class WorkingFlows(unittest.TestCase):
         results = rag.search_study_material('What is cloud elasticity?')
         self.assertIn('elasticity', results[0]['text'])
         self.assertEqual(results[0]['page'], 1)
-        rag._FAISS_INDEX = None
-        rag._CHUNKS_METADATA = []
+        rag.get_vector_state().index = None
+        rag.get_vector_state().metadata = []
         self.assertTrue(rag.get_vector_store_status()['is_ready'])
         self.assertEqual(rag.get_indexed_files_details()[0]['file_name'], 'lecture.pdf')
         rag.clear_vector_store()
@@ -342,7 +342,7 @@ class WorkingFlows(unittest.TestCase):
             {'file_name':'math.pdf','page':5,'chunk_id':3,'text':'Alternatively use horizontal strips.\nEXERCISE 8.1\nUse numbers 116 and 9.'},
         ]
         matches=[dict(chunks[2],score=0.9),dict(chunks[0],score=0.7)]
-        with patch.object(rag,'_CHUNKS_METADATA',chunks),patch.object(rag,'search_study_material',return_value=matches):
+        with patch.object(rag.get_vector_state(),'metadata',chunks),patch.object(rag,'search_study_material',return_value=matches):
             context=rag.retrieve_answer_context('Find the area enclosed by the ellipse',file_name='math.pdf')
         combined='\n'.join(c['text'] for c in context)
         self.assertTrue(combined.startswith('Example 2'))

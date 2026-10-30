@@ -10,6 +10,7 @@ import re
 from urllib.parse import urlsplit
 from pathlib import Path
 from dotenv import load_dotenv
+from workspace import current_workspace, reserve_ai_request
 
 # Suppress deprecation warnings from legacy packages
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -80,6 +81,7 @@ def generate_completion(prompt: str, system_instruction: str = None, reasoning_e
     if not is_ai_configured():
         raise ValueError("Add your Groq API key to GROQ_API_KEY in .env, then restart the website.")
 
+    reserve_ai_request()
     import requests
     key = os.getenv("GROQ_API_KEY", "").strip()
     messages = []
@@ -252,3 +254,9 @@ def generate_gemini_text(prompt: str, system_instruction: str = None) -> str:
                 f"Gemini API error ({type(e).__name__}): {err_msg}\n"
                 f"Model: '{model_name}'. Check your internet connection or model availability in .env."
             ) from e
+
+
+def get_uploads_dir():
+    """Use the bound visitor folder, or the original local profile."""
+    workspace = current_workspace()
+    return workspace.uploads if workspace is not None else UPLOADS_DIR

@@ -79,3 +79,12 @@ STUDY_PLAN_FORMAT_FIX.md
 CHAT_ROUTING_FIX.md
 LEARNING_FEATURE_FIXES.md
 FINAL_AUDIT_REPORT.md
+
+# Vercel / Next.js migration
+node_modules/
+.next/
+.vercel/
+*.tsbuildinfo
+# Keep the Next.js source library (the generic Python lib/ rule above excludes it).
+!web/lib/
+!web/lib/**

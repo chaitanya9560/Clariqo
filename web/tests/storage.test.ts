@@ -1,0 +1,12 @@
+import 'fake-indexeddb/auto';
+import { test, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { loadStudy, storeMaterial, storeLearning, deleteMaterial, clearStudy } from '../lib/storage';
+import { EMPTY_LEARNING, type Material } from '../lib/types';
+beforeEach(async () => { await clearStudy(); });
+const material: Material = { id: 'saved', name: 'notes.pdf', size: 3, pageCount: 1, chunks: [{ page: 1, text: 'Cloud elasticity adjusts resources.' }], file: new Blob(['PDF']), addedAt: '2026-10-30' };
+test('new browser database starts without another visitor’s data', async () => { const state = await loadStudy(); assert.deepEqual(state.materials, []); assert.deepEqual(state.learning, EMPTY_LEARNING); });
+test('saved PDF bytes and references survive reopening the database', async () => { await storeMaterial(material); const restored = await loadStudy(); assert.equal(restored.materials[0].name, 'notes.pdf'); assert.equal(await restored.materials[0].file.text(), 'PDF'); assert.equal(restored.materials[0].chunks[0].page, 1); });
+test('replacing the same document identity does not duplicate the library', async () => { await storeMaterial(material); await storeMaterial({ ...material, chunks: [{ page: 2, text: 'Updated material' }] }); const state = await loadStudy(); assert.equal(state.materials.length, 1); assert.equal(state.materials[0].chunks[0].page, 2); });
+test('chat, quiz scores and completed plan days survive reopening', async () => { const state = structuredClone(EMPTY_LEARNING); state.totalQuestions = 1; state.messages = [{ id: 'm', role: 'user', content: 'Explain elasticity' }]; state.plan = { id: 'p', subject: 'Cloud', markdown: '### Day 1: Read\n- Notes', days: [{ day: 1, title: 'Read', content: '- Notes' }], completed: [1], sourceNames: ['notes.pdf'] }; state.results = [{ id: 'r', topic: 'Cloud', correct: 4, total: 5, date: '2026-10-30', concepts: [] }]; await storeLearning(state); assert.deepEqual((await loadStudy()).learning, state); });
+test('remove PDF keeps learning state; clear browser data removes both', async () => { await storeMaterial(material); await storeLearning({ ...EMPTY_LEARNING, totalQuestions: 2 }); await deleteMaterial('saved'); assert.equal((await loadStudy()).learning.totalQuestions, 2); await storeMaterial(material); await clearStudy(); const state = await loadStudy(); assert.deepEqual(state.materials, []); assert.equal(state.learning.totalQuestions, 0); });

@@ -1,4 +1,10 @@
-# Contributing to Clariqo
+# Contributing on vercel-migration
+
+The Vercel application is under `web/`. Run `npm ci`, `npm run typecheck`, `npm test` and `npm run build` from that directory. Keep server secrets out of client components and never use `NEXT_PUBLIC_` for API keys.
+
+For UI changes, check the affected screen on desktop and mobile in a browser. The earlier Python tests below apply to the retained Streamlit implementation, not the new Next.js app.
+
+# Retained Streamlit contribution guidance
 
 Clariqo is a local study-assistant prototype. Small fixes, clear bug reports and improvements to the documentation are welcome. Check the README's upstream licensing note before reusing or redistributing the code.
 

@@ -1,0 +1,12 @@
+export type PageName = 'Dashboard' | 'Study Materials' | 'Ask AI' | 'Quiz' | 'My Progress' | 'Study Plan';
+export type Chunk = { page: number; text: string };
+export type Material = { id: string; name: string; size: number; pageCount: number; chunks: Chunk[]; file: Blob; addedAt: string };
+export type Source = { fileName: string; page: number; text: string };
+export type WebSource = { title: string; url: string };
+export type Message = { id: string; role: 'user' | 'assistant'; content: string; sources?: Omit<Source, 'text'>[]; webSources?: WebSource[]; origin?: string; error?: boolean };
+export type Question = { question: string; options: Record<'A' | 'B' | 'C' | 'D', string>; correct_answer: 'A' | 'B' | 'C' | 'D'; explanation: string; subtopic: string };
+export type QuizResult = { id: string; topic: string; correct: number; total: number; date: string; concepts: { topic: string; correct: boolean }[] };
+export type PlanDay = { day: number; title: string; content: string };
+export type StudyPlan = { id: string; subject: string; markdown: string; days: PlanDay[]; completed: number[]; sourceNames: string[] };
+export type Learning = { messages: Message[]; results: QuizResult[]; plan: StudyPlan | null; totalQuestions: number };
+export const EMPTY_LEARNING: Learning = { messages: [], results: [], plan: null, totalQuestions: 0 };

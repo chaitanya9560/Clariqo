@@ -59,6 +59,8 @@ The PDF never crosses Vercel's function request-body limit: the original file up
 
 ## Features
 
+This feature branch adds [flashcards and mind maps](../docs/STUDY_TOOLS.md), with private saved sets, card review progress, expandable concept branches and Markdown downloads. No additional paid service is required.
+
 - Dashboard with saved-material, question and quiz metrics.
 - Five-PDF library with preview, download, safe same-name replacement and removal.
 - Chat with PDF-first, PDF-only and internet-search modes, Markdown and KaTeX math. In Chat mode, questions not covered by a PDF use general knowledge; uploading a PDF does not force an internet search. Explicit search requests and current-information questions still use search.

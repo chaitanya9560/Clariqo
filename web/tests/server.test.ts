@@ -71,3 +71,27 @@ test('current information still requires a verified web result in Chat mode', as
   assert.equal(r.origin, 'error'); assert.equal(sent.length, 1); assert.ok(sent[0].tools);
   assert.ok(!JSON.stringify(sent[0]).includes('PRIVATE_PDF_TEXT'));
 });
+
+test('flashcards use the authenticated API and validated PDF references',async()=>{
+  respond(JSON.stringify({cards:Array.from({length:5},(_,i)=>({front:`Question ${i+1}?`,back:'A concise answer.',sourceIndices:[1]}))}));
+  const r=await POST(request({action:'flashcards',topic:'Java',count:5,context:[{fileName:'notes.pdf',page:2,text:'Java supports objects.'}]}));
+  assert.equal(r.status,200);const data=await r.json();assert.equal(data.cards.length,5);assert.deepEqual(data.cards[0].sources,[{fileName:'notes.pdf',page:2}]);
+});
+test('mind-map API rejects cyclic generated concepts',async()=>{
+  respond(JSON.stringify({nodes:[{id:'a',parentId:'b',label:'A',detail:'A concept',sourceIndices:[]},{id:'b',parentId:'a',label:'B',detail:'B concept',sourceIndices:[]}]}));
+  const r=await POST(request({action:'mindmap',topic:'Java',context:[]}));assert.equal(r.status,502);assert.match((await r.json()).error,/invalid mind map/);
+});
+test('study-aid provider failures preserve honest errors rather than saving placeholder content',async()=>{
+  globalThis.fetch=async()=>new Response('',{status:429});
+  const r=await POST(request({action:'flashcards',topic:'Java',count:5,context:[]}));assert.equal(r.status,502);assert.match((await r.json()).error,/usage limit/);
+});
+test('new study-aid actions are blocked before provider access when signed out',async()=>{
+  let calls=0;globalThis.fetch=async()=>{calls++;throw new Error('Do not call');};
+  for(const action of ['flashcards','mindmap']){const r=await handleStudyPost(request({action,topic:'Java',count:5,context:[]}),async()=>{throw new LoginRequired();});assert.equal(r.status,401);}assert.equal(calls,0);
+});
+test('structured study-aid output accepts null error and refuses insufficient PDF content',async()=>{
+  respond(JSON.stringify({nodes:[{id:'root',parentId:null,label:'Java',detail:'Programming language',sourceIndices:[]},{id:'classes',parentId:'root',label:'Classes',detail:'Object blueprints',sourceIndices:[]}],error:null}));
+  const good=await POST(request({action:'mindmap',topic:'Java',context:[]}));assert.equal(good.status,200);assert.equal((await good.json()).nodes.length,2);assert.ok(sent[0].response_format);
+  respond(JSON.stringify({cards:[],error:'Not covered by excerpts'}));
+  const bad=await POST(request({action:'flashcards',topic:'Biology',count:5,context:[{fileName:'java.pdf',page:1,text:'Java classes define objects.'}]}));assert.equal(bad.status,502);assert.match((await bad.json()).error,/could not support/);
+});

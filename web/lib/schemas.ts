@@ -5,7 +5,9 @@ const history = z.array(z.object({ role: z.enum(['user', 'assistant']), content:
 export const ChatSchema = z.object({ action: z.literal('chat'), question: z.string().trim().min(1).max(2000), mode: z.enum(['chat', 'pdf', 'web']), hasMaterials: z.boolean().default(false), context, history });
 export const QuizSchema = z.object({ action: z.literal('quiz'), topic: z.string().trim().min(1).max(200), count: z.union([z.literal(5), z.literal(10)]), difficulty: z.enum(['Easy', 'Medium', 'Hard']), context });
 export const PlanSchema = z.object({ action: z.literal('plan'), subject: z.string().trim().min(1).max(200), examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), hours: z.number().min(.5).max(8), level: z.enum(['Beginner', 'Intermediate', 'Advanced']), weakTopics: z.array(z.string().max(100)).max(20), context });
-export const RequestSchema = z.discriminatedUnion('action', [ChatSchema, QuizSchema, PlanSchema]);
+export const FlashcardsSchema = z.object({ action: z.literal('flashcards'), topic: z.string().trim().min(1).max(200), count: z.union([z.literal(5), z.literal(10)]), context });
+export const MindMapRequestSchema = z.object({ action: z.literal('mindmap'), topic: z.string().trim().min(1).max(200), context });
+export const RequestSchema = z.discriminatedUnion('action', [ChatSchema, QuizSchema, PlanSchema, FlashcardsSchema, MindMapRequestSchema]);
 export const QuestionSchema = z.object({ question: z.string().trim().min(5).max(1000), options: z.object({ A: z.string().trim().min(1).max(600), B: z.string().trim().min(1).max(600), C: z.string().trim().min(1).max(600), D: z.string().trim().min(1).max(600) }).strict(), correct_answer: z.enum(['A', 'B', 'C', 'D']), explanation: z.string().trim().min(1).max(2000), subtopic: z.string().trim().min(1).max(100) });
 export function validateQuestions(value: unknown, count: number) {
   const questions = z.array(QuestionSchema).length(count).parse(value);

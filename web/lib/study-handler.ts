@@ -1,5 +1,6 @@
 import { RequestSchema } from './schemas';
 import { chat, makeQuiz, makePlan } from './service';
+import { makeFlashcards, makeMindMap } from './study-aid-service';
 import { readJson, takeRateLimit, sameOrigin } from './http';
 import { LoginRequired, type Student } from './auth-config';
 import { requireStudent } from './supabase/server';
@@ -14,7 +15,7 @@ export async function handleStudyPost(request: Request, authenticate: () => Prom
   try { input = RequestSchema.parse(await readJson(request)); }
   catch { return Response.json({ error: 'Invalid request. Check the question, date and selected material, then try again.' }, { status: 400, headers }); }
   try {
-    const result = input.action === 'chat' ? await chat(input) : input.action === 'quiz' ? await makeQuiz(input) : await makePlan(input);
+    const result = input.action === 'chat' ? await chat(input) : input.action === 'quiz' ? await makeQuiz(input) : input.action === 'plan' ? await makePlan(input) : input.action === 'flashcards' ? await makeFlashcards(input) : await makeMindMap(input);
     return Response.json(result, { headers });
   } catch (error) {
     const secret = process.env.GROQ_API_KEY;

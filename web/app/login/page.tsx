@@ -1,0 +1,11 @@
+import { redirect } from 'next/navigation';
+import LoginScreen from '@/components/LoginScreen';
+import { authConfiguration } from '@/lib/auth-config';
+import { signedInStudent } from '@/lib/supabase/server';
+export const dynamic = 'force-dynamic';
+export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; mode?: string }> }) {
+  const configured = Boolean(authConfiguration());
+  if (configured && await signedInStudent()) redirect('/');
+  const query = await searchParams;
+  return <LoginScreen configured={configured} failed={Boolean(query.error)} initialMode={query.mode === 'signup' ? 'signup' : query.mode === 'reset' ? 'reset' : 'signin'} />;
+}

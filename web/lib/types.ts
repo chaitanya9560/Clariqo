@@ -1,6 +1,6 @@
 export type PageName = 'Dashboard' | 'Study Materials' | 'Ask AI' | 'Quiz' | 'My Progress' | 'Study Plan';
 export type Chunk = { page: number; text: string };
-export type Material = { id: string; name: string; size: number; pageCount: number; chunks: Chunk[]; file: Blob; addedAt: string };
+export type Material = { id: string; name: string; size: number; pageCount: number; chunks: Chunk[]; file?: Blob; storagePath?: string; addedAt: string };
 export type Source = { fileName: string; page: number; text: string };
 export type WebSource = { title: string; url: string };
 export type Message = { id: string; role: 'user' | 'assistant'; content: string; sources?: Omit<Source, 'text'>[]; webSources?: WebSource[]; origin?: string; error?: boolean };

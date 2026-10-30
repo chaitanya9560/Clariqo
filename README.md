@@ -26,7 +26,7 @@ Read the [complete setup and deployment guide](web/README.md) before deploying. 
 | My Progress | Saved quiz scores and subtopics that need more practice |
 | Study Plan | Up to 14 days, exam date, study time, level, weak topics and a completion checklist |
 
-PDFs, chat, quiz results and the current plan are saved **in the visitor's browser**. There are no logins or cross-device sync.
+On this account feature branch, email/password sign-in requires email verification. PDFs are saved in private Supabase Storage; chat, quiz results and the current plan are saved to the signed-in account. Google sign-in is deferred. Custom SMTP is configured. Real inbox delivery still needs a sign-up check.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ PDFs, chat, quiz results and the current plan are saved **in the visitor's brows
 flowchart LR
     PDF[Study PDF] --> Browser[Browser PDF.js extraction]
     Browser --> Search[Local text retrieval]
-    Browser --> Storage[IndexedDB on this device]
+    Browser --> Storage[Private Supabase account storage]
     Search --> API[Bounded text + question]
     API --> Server[Next.js server route]
     Server --> Groq[Groq API]
@@ -42,7 +42,7 @@ flowchart LR
     Answer --> Storage
 ```
 
-This branch uses browser-local BM25-style text retrieval, **not FAISS or Sentence Transformers**. That avoids loading a Python embedding runtime into Vercel Functions. The original PDF stays in the browser; selected excerpts and prompts go to Groq through a server-only API key. PDF-only answers use supplied page references. Web fallback does not send the PDF or chat history to the search-enabled request.
+This branch uses browser-local BM25-style text retrieval, **not FAISS or Sentence Transformers**. That avoids loading a Python embedding runtime into Vercel Functions. The original PDF is extracted in the browser and saved directly to private Supabase Storage; selected excerpts and prompts go to Groq through a server-only API key. PDF-only answers use supplied page references. Web fallback does not send the PDF or chat history to the search-enabled request.
 
 ## Run locally
 
@@ -53,7 +53,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-Add your Groq key to `.env.local`, then run `npm run dev` and open http://localhost:3000.
+Add your Groq key and Supabase publishable configuration to `.env.local` (see the [account setup guide](docs/EMAIL_LOGIN.md)), then run `npm run dev` and open http://localhost:3000.
 
 ## Verification
 
@@ -64,7 +64,7 @@ npm test
 npm run build
 ```
 
-The latest local check passed **46 automated tests**, strict TypeScript checks and a production build. Live Groq chat, PDF-context answers, quizzes, structured plans and internet search also passed. The production dependency audit reported no vulnerabilities at the time of the check.
+The account branch passed **55 automated tests**, strict TypeScript checks, and real two-account database/storage isolation tests. Supabase database security advisors returned no issues. Email delivery is not yet verified. The earlier Vercel version passed a production build. Live Groq chat, PDF-context answers, quizzes, structured plans and internet search also passed. The production dependency audit reported no vulnerabilities at the time of the check.
 
 Browser visual checks and real browser PDF extraction remain unverified because browser control was disabled. See the [verification report](docs/VERCEL_VERIFICATION.md) and [web guide](web/README.md) for the boundaries of these checks.
 
@@ -84,7 +84,7 @@ The Python files at the repository root remain available for the earlier local/S
 
 ## Limits and privacy
 
-Text-based PDFs only; no OCR. Text retrieval can miss paraphrases and equations. AI output can be wrong. Browser storage belongs to the browser profile, so people sharing that profile also share its saved study data. Clearing site data removes saved work. Provider quotas and hosting limits apply; unlimited usage and durable accounts are not implemented. A shared demo access code is optional; rate limits are best-effort across serverless instances.
+Text-based PDFs only; no OCR. Text retrieval can miss paraphrases and equations. AI output can be wrong. Account data is protected with database and storage ownership policies. Sign out on shared devices. Old browser-only data is kept in IndexedDB and is not automatically copied into an account. Provider and Supabase quotas apply; unlimited usage is not promised. Storage and database deletions are separate operations; retry if a network failure interrupts clearing data. A shared demo access code is optional; rate limits are best-effort across serverless instances.
 
 ## Feedback and credit
 

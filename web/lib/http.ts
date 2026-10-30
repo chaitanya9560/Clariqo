@@ -15,3 +15,15 @@ export async function readJson(request: Request, limit = 64000) {
   const bytes = new Uint8Array(length); let offset = 0; for (const c of chunks) { bytes.set(c, offset); offset += c.length; }
   try { return JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('Invalid JSON request.'); }
 }
+
+export function sameOrigin(request: Request) {
+  const origin = request.headers.get('origin');
+  if (!origin) return true;
+  const target = new URL(request.url), host = request.headers.get('host');
+  // Next.js may use its internal hostname in request.url. Host is supplied by the
+  // receiving HTTP server; browsers cannot override it with a cross-site fetch.
+  try {
+    const expected = host ? new URL(`${target.protocol}//${host}`) : target;
+    return origin === expected.origin;
+  } catch { return false; }
+}

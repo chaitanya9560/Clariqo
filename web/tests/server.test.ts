@@ -2,8 +2,12 @@ import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { complete, safeHttpUrl } from '../lib/provider';
 import { chat, makeQuiz, makePlan } from '../lib/service';
-import { readJson, takeRateLimit } from '../lib/http';
-import { POST, GET } from '../app/api/study/route';
+import { readJson, takeRateLimit, sameOrigin } from '../lib/http';
+import { GET, POST as realPOST } from '../app/api/study/route';
+import { handleStudyPost } from '../lib/study-handler';
+import { LoginRequired } from '../lib/auth-config';
+const student = { id: '11111111-1111-4111-8111-111111111111', email: 'test@example.invalid', displayName: 'Test' };
+const POST = (request: Request) => handleStudyPost(request, async () => student);
 const originalFetch = globalThis.fetch, originalKey = process.env.GROQ_API_KEY;
 let sent: Record<string, unknown>[];
 beforeEach(() => { process.env.GROQ_API_KEY = 'test-provider-secret'; delete process.env.DEMO_ACCESS_CODE; sent = []; });
@@ -31,3 +35,11 @@ test('optional demo code is enforced', async () => { process.env.DEMO_ACCESS_COD
 test('API surfaces provider failure without credential details', async () => { globalThis.fetch = async () => new Response('', { status: 403 }); const r = await POST(request(input)); assert.equal(r.status, 502); assert.ok(!(await r.text()).includes('test-provider-secret')); });
 test('structured study plan produces ordered days and preserves exam tips', async () => { respond(JSON.stringify({ days: [{ title: 'Foundations', content: '- Read for 60 minutes\n- Practise for 60 minutes' }, { title: 'Revision', content: '- Review for 120 minutes' }], tips: ['Review errors', 'Take breaks', 'Sleep well'] })); const r = await makePlan({ action: 'plan', subject: 'Cloud', examDate: '2026-11-01', today: '2026-10-30', hours: 2, level: 'Beginner', weakTopics: [], context: [] }); assert.equal(r.days.length, 2); assert.equal(r.days[1].day, 2); assert.match(r.markdown, /Sleep well/); assert.ok(sent[0].response_format); });
 test('successful quiz generation returns all validated questions', async () => { const questions = Array.from({ length: 5 }, (_, i) => ({ question: `What does example ${i} describe?`, options: { A: 'Manual scaling', B: 'Elastic resources', C: 'Screen resolution', D: 'Battery life' }, correct_answer: 'B', explanation: 'Resources change with demand.', subtopic: 'Elasticity' })); respond(JSON.stringify(questions)); const r = await makeQuiz({ action: 'quiz', topic: 'Cloud', difficulty: 'Medium', count: 5, context: [] }); assert.equal(r.questions.length, 5); });
+
+test('unauthenticated requests cannot reach the AI provider', async () => { let calls = 0; globalThis.fetch = async () => { calls++; throw new Error('Must not call'); }; const r = await handleStudyPost(request(input), async () => { throw new LoginRequired(); }); assert.equal(r.status, 401); assert.equal(calls, 0); });
+test('missing auth configuration fails closed instead of allowing public AI', async () => { const oldUrl = process.env.NEXT_PUBLIC_SUPABASE_URL, oldKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; delete process.env.NEXT_PUBLIC_SUPABASE_URL; delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; try { const r = await realPOST(request(input)); assert.equal(r.status, 503); } finally { if (oldUrl) process.env.NEXT_PUBLIC_SUPABASE_URL = oldUrl; if (oldKey) process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = oldKey; } });
+
+test('same-origin check uses the receiving host when Next uses an internal URL', () => {
+  assert.equal(sameOrigin(new Request('http://localhost:3001/api/study', { headers: { host: '127.0.0.1:3001', origin: 'http://127.0.0.1:3001' } })), true);
+  assert.equal(sameOrigin(new Request('https://internal/api/study', { headers: { host: 'clariqo.vercel.app', origin: 'https://evil.example' } })), false);
+});

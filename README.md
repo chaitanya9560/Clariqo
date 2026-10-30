@@ -64,7 +64,7 @@ npm test
 npm run build
 ```
 
-The account branch passed **55 automated tests**, strict TypeScript checks, and real two-account database/storage isolation tests. Supabase database security advisors returned no issues. Email delivery is not yet verified. The earlier Vercel version passed a production build. Live Groq chat, PDF-context answers, quizzes, structured plans and internet search also passed. The production dependency audit reported no vulnerabilities at the time of the check.
+The account branch passed **58 automated tests**, strict TypeScript checks, and real two-account database/storage isolation tests. Supabase database security advisors returned no issues. Email delivery is not yet verified. The earlier Vercel version passed a production build. Live Groq chat, PDF-context answers, quizzes, structured plans and internet search also passed. The production dependency audit reported no vulnerabilities at the time of the check.
 
 Browser visual checks and real browser PDF extraction remain unverified because browser control was disabled. See the [verification report](docs/VERCEL_VERIFICATION.md) and [web guide](web/README.md) for the boundaries of these checks.
 

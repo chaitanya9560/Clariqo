@@ -61,7 +61,7 @@ The PDF never crosses Vercel's function request-body limit: the original file up
 
 - Dashboard with saved-material, question and quiz metrics.
 - Five-PDF library with preview, download, safe same-name replacement and removal.
-- Chat with PDF-first, PDF-only and internet-search modes, Markdown and KaTeX math.
+- Chat with PDF-first, PDF-only and internet-search modes, Markdown and KaTeX math. In Chat mode, questions not covered by a PDF use general knowledge; uploading a PDF does not force an internet search. Explicit search requests and current-information questions still use search.
 - Five- or ten-question quizzes with difficulty, answer review and saved subtopic performance.
 - Progress from actual quiz answers, weighted by question count.
 - Plans up to 14 days, based on exam date, available time, level, weak topics and optional material excerpts.

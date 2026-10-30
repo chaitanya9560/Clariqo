@@ -21,7 +21,7 @@ test('provider errors and truncation never produce fake success', async () => { 
 test('plain conversation does not attach PDFs or enable search', async () => { respond('Hello!'); const r = await chat({ ...input, question: 'Hello' }); assert.equal(r.origin, 'conversation'); assert.ok(!('tools' in sent[0])); });
 test('PDF answer carries supplied file/page references', async () => { respond('Elasticity changes resources.'); const r = await chat({ ...input, context: [{ fileName: 'notes.pdf', page: 3, text: 'Cloud elasticity scales resources.' }] }); assert.equal(r.origin, 'pdf'); assert.deepEqual(r.sources, [{ fileName: 'notes.pdf', page: 3 }]); });
 test('PDF-only mode never searches even for a current question', async () => { respond('[NOT_IN_MATERIAL]'); const r = await chat({ ...input, mode: 'pdf', question: 'latest news', context: [{ fileName: 'x.pdf', page: 1, text: 'Algebra definitions.' }] }); assert.equal(r.origin, 'pdf'); assert.ok(sent.every(x => !x.tools)); });
-test('web fallback does not send PDF excerpts or chat history', async () => { let n = 0; globalThis.fetch = async (_u, init) => { sent.push(JSON.parse(String(init?.body))); return Response.json({ choices: [{ message: { content: n++ === 0 ? '[NOT_IN_MATERIAL]' : 'Online answer', executed_tools: n > 1 ? [{ type: 'browser_search', index: 0, search_results: { results: [{ title: 'Official docs', url: 'https://example.org/docs' }] } }] : [] } }] }); }; const r = await chat({ ...input, context: [{ fileName: 'x.pdf', page: 1, text: 'PRIVATE_PDF_TEXT' }], history: [{ role: 'user', content: 'PRIVATE_HISTORY' }] }); assert.equal(r.origin, 'web'); assert.ok(!JSON.stringify(sent[1]).includes('PRIVATE_')); });
+test('explicit internet search does not send PDF excerpts or chat history', async () => { globalThis.fetch = async (_u, init) => { sent.push(JSON.parse(String(init?.body))); return Response.json({ choices: [{ message: { content: 'Online answer', executed_tools: [{ type: 'browser_search', index: 0, search_results: { results: [{ title: 'Official docs', url: 'https://example.org/docs' }] } }] } }] }); }; const r = await chat({ ...input, mode: 'web', context: [{ fileName: 'x.pdf', page: 1, text: 'PRIVATE_PDF_TEXT' }], history: [{ role: 'user', content: 'PRIVATE_HISTORY' }] }); assert.equal(r.origin, 'web'); assert.equal(sent.length, 1); assert.ok(!JSON.stringify(sent[0]).includes('PRIVATE_')); });
 test('search without executed sources is reported honestly', async () => { respond('I think so'); const r = await chat({ ...input, mode: 'web' }); assert.equal(r.origin, 'error'); assert.deepEqual(r.webSources, []); });
 test('unsafe source URLs are not passed through', () => { assert.equal(safeHttpUrl('javascript:alert(1)'), null); assert.equal(safeHttpUrl('https://user:pass@example.org'), null); assert.equal(safeHttpUrl('https://example.org/docs'), 'https://example.org/docs'); });
 test('invalid or duplicate AI quiz is rejected', async () => { respond('not JSON'); await assert.rejects(makeQuiz({ action: 'quiz', topic: 'Cloud', difficulty: 'Easy', count: 5, context: [] })); });
@@ -42,4 +42,32 @@ test('missing auth configuration fails closed instead of allowing public AI', as
 test('same-origin check uses the receiving host when Next uses an internal URL', () => {
   assert.equal(sameOrigin(new Request('http://localhost:3001/api/study', { headers: { host: '127.0.0.1:3001', origin: 'http://127.0.0.1:3001' } })), true);
   assert.equal(sameOrigin(new Request('https://internal/api/study', { headers: { host: 'clariqo.vercel.app', origin: 'https://evil.example' } })), false);
+});
+
+test('basic questions use general knowledge when a PDF has no matching passage', async () => {
+  for (const question of ['what is oops', 'what is java programming']) {
+    sent = []; respond('A clear general explanation.');
+    const r = await chat({ ...input, question, hasMaterials: true });
+    assert.equal(r.origin, 'general'); assert.equal(r.answer, 'A clear general explanation.');
+    assert.deepEqual(r.sources, []); assert.deepEqual(r.webSources, []);
+    assert.equal(sent.length, 1); assert.ok(!sent[0].tools);
+  }
+});
+test('an insufficient PDF falls back to general chat without a needless search', async () => {
+  globalThis.fetch = async (_url, init) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return Response.json({ choices: [{ message: { content: sent.length === 1 ? '[NOT_IN_MATERIAL]' : 'Java is a programming language.' } }] });
+  };
+  const r = await chat({ ...input, question: 'what is java programming', hasMaterials: true, context: [{ fileName: 'notes.pdf', page: 1, text: 'PRIVATE_PDF_TEXT' }], history: [{ role: 'user', content: 'I am learning programming' }] });
+  assert.equal(r.origin, 'general'); assert.match(r.answer, /Java/); assert.equal(sent.length, 2);
+  assert.deepEqual(r.sources, []); assert.deepEqual(r.webSources, []);
+  assert.ok(sent.every(call => !call.tools));
+  assert.ok(!JSON.stringify(sent[1]).includes('PRIVATE_PDF_TEXT'));
+  assert.ok(JSON.stringify(sent[1]).includes('I am learning programming'));
+});
+test('current information still requires a verified web result in Chat mode', async () => {
+  respond('Unverified current information');
+  const r = await chat({ ...input, question: 'latest Java release', hasMaterials: true, context: [{ fileName: 'notes.pdf', page: 1, text: 'PRIVATE_PDF_TEXT' }] });
+  assert.equal(r.origin, 'error'); assert.equal(sent.length, 1); assert.ok(sent[0].tools);
+  assert.ok(!JSON.stringify(sent[0]).includes('PRIVATE_PDF_TEXT'));
 });

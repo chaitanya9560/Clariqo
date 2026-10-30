@@ -19,13 +19,14 @@ export async function chat(input: z.infer<typeof ChatSchema>) {
     if (!r.answer.includes('[NOT_IN_MATERIAL]')) return { answer: r.answer, sources: refs(context), webSources: [], origin: 'pdf' };
     if (mode === 'pdf') return { answer: 'The selected PDF excerpts do not cover this question. Try a more specific question or switch to Chat or Internet mode.', sources: [], webSources: [], origin: 'pdf' };
   }
+  // Having a PDF does not make a general question require internet search.
   // PDF excerpts and history are never sent to the web-enabled call.
-  if (webRequested || context.length || input.hasMaterials) {
+  if (webRequested) {
     const r = await complete(question, GENERAL + ' Search reliable primary sources and answer concisely. If sources are unavailable, say so.', { web: true });
     if (!r.searched || !r.webSources.length) return { answer: 'I could not verify an internet answer right now. Try again, or use Chat for a general explanation.', sources: [], webSources: [], origin: 'error' };
     return { answer: r.answer, sources: [], webSources: r.webSources, origin: 'web' };
   }
-  const r = await complete(question, GENERAL, { history });
+  const r = await complete(question, GENERAL + ' Answer from general subject knowledge. This answer is not grounded in the uploaded PDF: do not invent file/page citations or claim that a passage was read. If the question requires a particular unseen passage or exercise, ask for that text rather than inventing it.', { history });
   return { answer: r.answer, sources: [], webSources: [], origin: 'general' };
 }
 export async function makeQuiz(input: z.infer<typeof QuizSchema>) {

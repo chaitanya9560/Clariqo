@@ -1,0 +1,13 @@
+[server]
+fileWatcherType = "auto"
+headless = true
+maxUploadSize = 20
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"

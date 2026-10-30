@@ -1,0 +1,9 @@
+# Intel Mac versions used for the local setup.
+-r requirements.txt
+streamlit==1.45.1
+sentence-transformers==3.4.1
+transformers==4.46.3
+numpy<2
+faiss-cpu==1.8.0
+pandas<3
+pyarrow<20

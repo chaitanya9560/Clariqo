@@ -20,8 +20,8 @@ test('missing API key makes no external request', async () => { delete process.e
 test('key stays in authorization header, not prompt or response', async () => { let headers: HeadersInit | undefined; globalThis.fetch = async (_u, init) => { headers = init?.headers; assert.ok(!String(init?.body).includes('test-provider-secret')); return Response.json({ choices: [{ message: { content: 'Hi' } }] }); }; assert.equal((await complete('hello', 'study')).answer, 'Hi'); assert.equal(new Headers(headers).get('Authorization'), 'Bearer test-provider-secret'); });
 test('provider errors and truncation never produce fake success', async () => { for (const status of [401, 429, 500]) { globalThis.fetch = async () => new Response('', { status }); await assert.rejects(complete('x', 'x')); } globalThis.fetch = async () => Response.json({ choices: [{ finish_reason: 'length', message: { content: 'cut' } }] }); await assert.rejects(complete('x', 'x'), /cut short/); });
 test('plain conversation does not attach PDFs or enable search', async () => { respond('Hello!'); const r = await chat({ ...input, question: 'Hello' }); assert.equal(r.origin, 'conversation'); assert.ok(!('tools' in sent[0])); });
-test('PDF answer carries supplied file/page references', async () => { respond('Elasticity changes resources.'); const r = await chat({ ...input, context: [{ fileName: 'notes.pdf', page: 3, text: 'Cloud elasticity scales resources.' }] }); assert.equal(r.origin, 'pdf'); assert.deepEqual(r.sources, [{ fileName: 'notes.pdf', page: 3 }]); });
-test('PDF-only mode never searches even for a current question', async () => { respond('[NOT_IN_MATERIAL]'); const r = await chat({ ...input, mode: 'pdf', question: 'latest news', context: [{ fileName: 'x.pdf', page: 1, text: 'Algebra definitions.' }] }); assert.equal(r.origin, 'pdf'); assert.ok(sent.every(x => !x.tools)); });
+test('PDF answer carries supplied file/page references', async () => { respond(JSON.stringify({answer:'Elasticity changes resources.',sourceIndices:[1]})); const r = await chat({ ...input, context: [{ fileName: 'notes.pdf', page: 3, text: 'Cloud elasticity scales resources.' }] }); assert.equal(r.origin, 'pdf'); assert.deepEqual(r.sources, [{ fileName: 'notes.pdf', page: 3 }]); });
+test('PDF-only mode never searches even for a current question', async () => { respond(JSON.stringify({answer:'[NOT_IN_MATERIAL]',sourceIndices:[]})); const r = await chat({ ...input, mode: 'pdf', question: 'latest news', context: [{ fileName: 'x.pdf', page: 1, text: 'Algebra definitions.' }] }); assert.equal(r.origin, 'pdf'); assert.ok(sent.every(x => !x.tools)); });
 test('explicit internet search does not send PDF excerpts or chat history', async () => { globalThis.fetch = async (_u, init) => { sent.push(JSON.parse(String(init?.body))); return Response.json({ choices: [{ message: { content: 'Online answer', executed_tools: [{ type: 'browser_search', index: 0, search_results: { results: [{ title: 'Official docs', url: 'https://example.org/docs' }] } }] } }] }); }; const r = await chat({ ...input, mode: 'web', context: [{ fileName: 'x.pdf', page: 1, text: 'PRIVATE_PDF_TEXT' }], history: [{ role: 'user', content: 'PRIVATE_HISTORY' }] }); assert.equal(r.origin, 'web'); assert.equal(sent.length, 1); assert.ok(!JSON.stringify(sent[0]).includes('PRIVATE_')); });
 test('search without executed sources is reported honestly', async () => { respond('I think so'); const r = await chat({ ...input, mode: 'web' }); assert.equal(r.origin, 'error'); assert.deepEqual(r.webSources, []); });
 test('unsafe source URLs are not passed through', () => { assert.equal(safeHttpUrl('javascript:alert(1)'), null); assert.equal(safeHttpUrl('https://user:pass@example.org'), null); assert.equal(safeHttpUrl('https://example.org/docs'), 'https://example.org/docs'); });
@@ -57,7 +57,7 @@ test('basic questions use general knowledge when a PDF has no matching passage',
 test('an insufficient PDF falls back to general chat without a needless search', async () => {
   globalThis.fetch = async (_url, init) => {
     sent.push(JSON.parse(String(init?.body)));
-    return Response.json({ choices: [{ message: { content: sent.length === 1 ? '[NOT_IN_MATERIAL]' : 'Java is a programming language.' } }] });
+    return Response.json({ choices: [{ message: { content: sent.length === 1 ? JSON.stringify({answer:'[NOT_IN_MATERIAL]',sourceIndices:[]}) : 'Java is a programming language.' } }] });
   };
   const r = await chat({ ...input, question: 'what is java programming', hasMaterials: true, context: [{ fileName: 'notes.pdf', page: 1, text: 'PRIVATE_PDF_TEXT' }], history: [{ role: 'user', content: 'I am learning programming' }] });
   assert.equal(r.origin, 'general'); assert.match(r.answer, /Java/); assert.equal(sent.length, 2);
@@ -106,4 +106,18 @@ test('History plan prompt excludes Biology weaknesses from the request builder',
   assert.ok(!prompt.includes('Photosynthesis'));
   assert.match(prompt,/not assessed/);
   assert.match(prompt,/requested subject/);
+});
+
+test('PDF chat requests indexed structured references and excludes uncited retrieved pages',async()=>{
+ respond(JSON.stringify({answer:'Elasticity changes capacity.',sourceIndices:[2]}));
+ const r=await chat({...input,mode:'pdf',context:[{fileName:'notes.pdf',page:1,text:'Unrelated passage.'},{fileName:'notes.pdf',page:3,text:'Elasticity changes capacity.'}]});
+ assert.equal(r.origin,'pdf');assert.deepEqual(r.sources,[{fileName:'notes.pdf',page:3}]);assert.equal('citationVersion' in r&&r.citationVersion,1);assert.ok(sent[0].response_format);assert.equal(sent[0].tools,undefined);
+});
+test('PDF chat refuses invented references instead of returning all retrieved pages',async()=>{
+ respond(JSON.stringify({answer:'An explanation.',sourceIndices:[9]}));
+ const r=await POST(request({...input,mode:'pdf',context:[{fileName:'notes.pdf',page:1,text:'Some notes.'}]}));assert.equal(r.status,502);const data=await r.json();assert.match(data.error,/valid PDF references/);assert.equal(data.sources,undefined);
+});
+test('unsupported indexed PDF reply falls back to general chat without PDF references',async()=>{
+ let call=0;globalThis.fetch=async()=>Response.json({choices:[{message:{content:++call===1?JSON.stringify({answer:'[NOT_IN_MATERIAL]',sourceIndices:[]}):'A general explanation.'}}]});
+ const r=await chat({...input,context:[{fileName:'notes.pdf',page:1,text:'Unrelated notes.'}]});assert.equal(r.origin,'general');assert.deepEqual(r.sources,[]);assert.equal(call,2);
 });

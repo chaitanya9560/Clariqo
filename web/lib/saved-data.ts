@@ -8,7 +8,7 @@ export const LearningSchema = z.object({
   flashcardDecks: z.array(DeckSchema).max(10).optional(),
   mindMaps: z.array(MindMapSchema).max(5).optional(),
   totalQuestions: z.number().int().min(0).max(10000000),
-  messages: z.array(z.object({ id: z.string().max(100), role: z.enum(['user', 'assistant']), content: z.string().max(60000), sources: z.array(reference).max(8).optional(), webSources: z.array(webReference).max(6).optional(), origin: z.string().max(30).optional(), error: z.boolean().optional() })).max(100),
+  messages: z.array(z.object({ id: z.string().max(100), role: z.enum(['user', 'assistant']), content: z.string().max(60000), citationVersion: z.literal(1).optional(), sources: z.array(reference).max(8).optional(), webSources: z.array(webReference).max(6).optional(), origin: z.string().max(30).optional(), error: z.boolean().optional() })).max(100),
   results: z.array(quizResult).max(100),
   plan: z.object({ id: z.string().max(100), subject: z.string().max(200), markdown: z.string().max(100000), days: z.array(z.object({ day: z.number().int().min(1).max(14), title: z.string().max(200), content: z.string().max(10000) })).min(1).max(14), completed: z.array(z.number().int().min(1).max(14)).max(14), sourceNames: z.array(z.string().max(200)).max(5) }).nullable()
 });

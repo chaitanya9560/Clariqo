@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { LearningSaveConflict } from './learning-saver';
 import { EMPTY_LEARNING, type Learning, type Material } from './types';
 import { materialFromRow, savedLearning } from './saved-data';
 const BUCKET = 'study-pdfs';
@@ -22,7 +23,9 @@ export function cloudStudyStore(client: SupabaseClient, userId: string) {
     const result = revision === null
       ? await client.from('clariqo_learning').insert({ user_id: userId, data, revision: next }).select('revision').single()
       : await client.from('clariqo_learning').update({ data, revision: next }).eq('user_id', userId).eq('revision', revision).select('revision').maybeSingle();
-    if (result.error || !result.data) throw new Error('Your changes could not be saved. Another tab or device may have newer work. Reload before continuing to avoid overwriting it.');
+    if (result.error?.code === '23505') throw new LearningSaveConflict();
+    if (result.error) throw new Error('Your changes could not be saved. Check your connection and retry. Keep this page open or download your unsaved backup.');
+    if (!result.data) throw new LearningSaveConflict();
     revision = result.data.revision;
   }
   async function storeMaterial(material: Material) {

@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { learningSaver, LearningSaveConflict } from '../lib/learning-saver';
 import { cloudStudyStore } from '../lib/cloud-storage';
 import { EMPTY_LEARNING, type Material } from '../lib/types';
 const uid='11111111-1111-4111-8111-111111111111',mid='22222222-2222-4222-8222-222222222222';
-function fake(options: { metadataFailure?: boolean; uploadFailure?: boolean; conflict?: boolean; storageFailure?: boolean }={}) {
+function fake(options: { metadataFailure?: boolean; uploadFailure?: boolean; conflict?: boolean; storageFailure?: boolean; learningFailure?: boolean; insertConflict?: boolean; noLearning?: boolean }={}) {
  const calls: {op:string;value?:unknown}[]=[];
  const row={id:mid,user_id:uid,name:'notes.pdf',size:100,page_count:1,chunks:[{page:1,text:'Synthetic notes'}],storage_path:`${uid}/${mid}/old.pdf`,created_at:'2026-10-31'};
  const client={
@@ -15,10 +16,10 @@ function fake(options: { metadataFailure?: boolean; uploadFailure?: boolean; con
     update(value:unknown){operation='update';calls.push({op:table+':update',value});return query;},
     upsert(value:unknown){operation='upsert';calls.push({op:table+':upsert',value});return query;},
     delete(){operation='delete';calls.push({op:table+':delete'});return query;},
-    single(){return Promise.resolve(result());},maybeSingle(){return Promise.resolve(table==='clariqo_materials'?{data:row,error:null}:result());},
+    single(){return Promise.resolve(result());},maybeSingle(){return Promise.resolve(table==='clariqo_materials'?{data:row,error:null}:operation==='select'&&options.noLearning?{data:null,error:null}:result());},
     then(resolve:(v:unknown)=>unknown,reject?:(e:unknown)=>unknown){return Promise.resolve(operation==='select'&&table==='clariqo_materials'?{data:[row],error:null}:result()).then(resolve,reject);}
    };
-   function result(){return {data:operation==='update'?options.conflict?null:{revision:2}:table==='clariqo_learning'?{data:EMPTY_LEARNING,revision:1}:null,error:operation==='upsert'&&options.metadataFailure?{message:'failed'}:null};}
+   function result(){return {data:operation==='update'?options.conflict?null:{revision:2}:table==='clariqo_learning'?{data:EMPTY_LEARNING,revision:1}:null,error:table==='clariqo_learning'&&operation==='update'&&options.learningFailure?{message:'offline'}:table==='clariqo_learning'&&operation==='insert'&&options.insertConflict?{code:'23505',message:'duplicate'}:operation==='upsert'&&options.metadataFailure?{message:'failed'}:null};}
    return query;
   },
   storage:{from(){return {
@@ -64,4 +65,18 @@ test('private downloads validate ownership before requesting bytes and cache rep
 test('failed storage deletion preserves the PDF database record',async()=>{
  const f=fake({storageFailure:true});await assert.rejects(cloudStudyStore(f.client,uid).deleteMaterial(mid),/could not be removed/);
  assert.ok(!f.calls.some(c=>c.op==='clariqo_materials:delete'));
+});
+
+
+test('transient learning-save failure retains the revision and can retry the pending change',async()=>{
+ const options={learningFailure:true},f=fake(options),store=cloudStudyStore(f.client,uid);
+ const loaded=await store.loadStudy();const saver=learningSaver(loaded.learning,value=>store.storeLearning(value),()=>{});
+ saver.update({...loaded.learning,totalQuestions:1});await assert.rejects(saver.flush(),error=>!(error instanceof LearningSaveConflict));
+ assert.equal(saver.state().status,'unsaved');options.learningFailure=false;saver.retry();await saver.flush();
+ assert.equal(saver.state().dirty,false);assert.deepEqual(f.calls.filter(c=>c.op==='filter:revision').map(c=>c.value),[1,1]);
+});
+test('concurrent initial insert is a conflict rather than an overwrite or automatic retry',async()=>{
+ const f=fake({insertConflict:true,noLearning:true});
+ const store=cloudStudyStore(f.client,uid);await store.loadStudy();await assert.rejects(store.storeLearning(EMPTY_LEARNING),LearningSaveConflict);
+ assert.equal(f.calls.filter(c=>c.op==='clariqo_learning:update').length,0);
 });

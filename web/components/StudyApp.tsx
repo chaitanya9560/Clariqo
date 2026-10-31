@@ -7,6 +7,7 @@ import { Flashcards, MindMaps } from './StudyTools';
 import { EMPTY_LEARNING, type Learning, type Material, type PageName, type Question, type QuizResult, type StudyPlan } from '@/lib/types';
 import { grade, materialContext, progress, retrieve, weakTopicsForPlan } from '@/lib/domain';
 import { cloudStudyStore } from '@/lib/cloud-storage';
+import { learningSaver, type SaveState } from '@/lib/learning-saver';
 import { browserClient } from '@/lib/supabase/browser';
 import type { Student } from '@/lib/auth-config';
 const PAGES: { name: PageName; icon: typeof House; caption: string; label?: string }[] = [
@@ -28,6 +29,7 @@ export default function StudyApp({ student }: { student: Student }) {
   const [page, setPage] = useState<PageName>('Dashboard');
   const [materials, setMaterials] = useState<Material[]>([]), [learning, setLearning] = useState<Learning>(structuredClone(EMPTY_LEARNING));
   const [ready, setReady] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [saveState, setSaveState] = useState<SaveState>({ status: 'saved', dirty: false, message: '' });
   const [busy, setBusy] = useState(''), [status, setStatus] = useState<{ configured: boolean; accessCodeRequired: boolean } | null>(null);
   const [accessCode, setAccessCode] = useState(''), [showMenu, setShowMenu] = useState(false);
   const [selected, setSelected] = useState(''), [preview, setPreview] = useState<{ id: string; page: number } | null>(null), [previewUrl, setPreviewUrl] = useState('');
@@ -35,18 +37,39 @@ export default function StudyApp({ student }: { student: Student }) {
   const [topic, setTopic] = useState(''), [count, setCount] = useState(5), [difficulty, setDifficulty] = useState('Medium');
   const [questions, setQuestions] = useState<Question[]>([]), [answers, setAnswers] = useState<Record<number, string>>({}), [quizTopic, setQuizTopic] = useState(''), [quizMaterialId, setQuizMaterialId] = useState<string | undefined>(), [result, setResult] = useState<QuizResult | null>(null);
   const [subject, setSubject] = useState(''), [examDate, setExamDate] = useState(tomorrow), [hours, setHours] = useState(2), [level, setLevel] = useState('Intermediate');
-  const fileInput = useRef<HTMLInputElement>(null), bottom = useRef<HTMLDivElement>(null), queue = useRef(Promise.resolve()), lastSaved = useRef<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null), bottom = useRef<HTMLDivElement>(null), saveQueue = useRef<ReturnType<typeof learningSaver> | null>(null);
   const stats = progress(learning.results), active = materials.find(m => m.id === selected), disabled = !ready || Boolean(busy);
-  useEffect(() => { let live = true; store.loadStudy().then(data => { if (!live) return; lastSaved.current = JSON.stringify(data.learning); setMaterials(data.materials); setLearning(data.learning); setReady(true); }).catch(() => { if (live) setError('Your account data could not be loaded. Check your connection and reload to try again.'); });
-    fetch('/api/study').then(r => r.json()).then(s => { if (live) setStatus(s); }).catch(() => { if (live) setStatus(null); }); return () => { live = false; }; }, [store]);
-  useEffect(() => { const snapshot = JSON.stringify(learning); if (!ready || snapshot === lastSaved.current) return; lastSaved.current = snapshot; queue.current = queue.current.then(() => store.storeLearning(learning)).catch(e => setError(e instanceof Error ? e.message : 'Your account changes could not be saved. Please reload before continuing.')); }, [learning, ready, store]);
+  useEffect(() => {
+    let live = true;
+    let saver: ReturnType<typeof learningSaver> | null = null;
+    store.loadStudy().then(data => {
+      if (!live) return;
+      saver = learningSaver(data.learning, value => store.storeLearning(value), state => { if (live) setSaveState(state); });
+      saveQueue.current = saver;
+      setSaveState(saver.state()); setMaterials(data.materials); setLearning(data.learning); setReady(true);
+    }).catch(() => { if (live) setError('Your account data could not be loaded. Check your connection and reload to try again.'); });
+    fetch('/api/study').then(r => r.json()).then(s => { if (live) setStatus(s); }).catch(() => { if (live) setStatus(null); });
+    return () => { live = false; saver?.stop(); if (saveQueue.current === saver) saveQueue.current = null; };
+  }, [store]);
+  useEffect(() => { if (ready) saveQueue.current?.update(learning); }, [learning, ready]);
+  useEffect(() => {
+    if (!saveState.dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { if (saveQueue.current?.state().dirty) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [saveState.dirty]);
+  useEffect(() => {
+    const retry = () => { if (saveQueue.current?.state().status === 'unsaved') saveQueue.current.retry(); };
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
+  }, []);
   useEffect(() => {
     const doc = materials.find(m => m.id === preview?.id); let live = true, url = ''; setPreviewUrl('');
     if (doc) void store.materialFile(doc).then(file => { if (!live) return; url = URL.createObjectURL(file); setPreviewUrl(url); }).catch(e => { if (live) setError(e instanceof Error ? e.message : 'The PDF could not be loaded.'); });
     return () => { live = false; if (url) URL.revokeObjectURL(url); };
   }, [preview?.id, materials, store]);
   useEffect(() => { const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || (session?.user.id && session.user.id !== student.id)) { setReady(false); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); window.location.replace('/login'); }
+    if (event === 'SIGNED_OUT' || (session?.user.id && session.user.id !== student.id)) { saveQueue.current?.stop(); setReady(false); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); window.location.replace('/login'); }
   }); return () => subscription.unsubscribe(); }, [client, student.id]);
   useEffect(() => { if (page === 'Ask AI') bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [learning.messages, page]);
   useEffect(() => { if (!showMenu) return; const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setShowMenu(false); }; document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close); }, [showMenu]);
@@ -98,12 +121,12 @@ export default function StudyApp({ student }: { student: Student }) {
   }
   async function resetAll() { if (busy) return; if (!confirm('Delete all PDFs, chats, quiz scores, plans, flashcards and mind maps saved to your account on all devices? Your sign-in account is not deleted.')) return;
     setBusy('Clearing your study data…'); setError('');
-    try { await queue.current; await store.clearStudy(); lastSaved.current = JSON.stringify(EMPTY_LEARNING); setReady(true); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); setSelected(''); setPreview(null); setQuestions([]); setResult(null); setNotice('Your saved account study data has been cleared.'); } catch { setError('Your account data could not be cleared. Please try again.'); } finally { setBusy(''); }
+    try { if (!saveQueue.current) throw new Error('Wait for your account to load.'); await saveQueue.current.pause(); await store.clearStudy(); saveQueue.current.reset(EMPTY_LEARNING); setReady(true); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); setSelected(''); setPreview(null); setQuestions([]); setResult(null); setNotice('Your saved account study data has been cleared.'); } catch { saveQueue.current?.resume(); setError('Your account data could not be cleared. Please try again.'); } finally { setBusy(''); }
   }
   async function signOut() {
     if (busy) return; setBusy('Signing out…'); setError('');
-    try { await queue.current; const { error } = await client.auth.signOut({ scope: 'local' }); if (error) throw error; setReady(false); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); window.location.replace('/login'); }
-    catch { setError('Sign-out could not be completed. Please try again.'); setBusy(''); }
+    try { if (!saveQueue.current) throw new Error('Wait for your account to load.'); saveQueue.current.update(learning); await saveQueue.current.flush(); const { error } = await client.auth.signOut({ scope: 'local' }); if (error) throw error; setReady(false); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); window.location.replace('/login'); }
+    catch { setError('Sign-out could not be completed. If changes are unsaved, retry the save or download a backup before leaving.'); setBusy(''); }
   }
   async function downloadMaterial(material: Material) {
     setBusy('Loading your PDF…'); setError('');
@@ -122,6 +145,8 @@ export default function StudyApp({ student }: { student: Student }) {
     {status && !status.configured && <div className="alert">AI is temporarily unavailable. You can still open your saved study material.</div>}
     {status?.accessCodeRequired && <label className="access-code field">Demo access code<input type="password" autoComplete="off" value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="From the project owner" /></label>}
     {error && <div className="alert" role="alert">{error}<button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}><X size={16} /></button></div>}
+    {saveState.status === 'saving' && <div className="notice" role="status"><LoaderCircle size={16} className="spin" />Saving your study changes…</div>}
+    {(saveState.status === 'unsaved' || saveState.status === 'conflict') && <section className="alert save-recovery" role="alert"><div><strong>Your latest changes are not saved.</strong><p>{saveState.message || 'Keep this page open and retry when your connection is available.'}</p></div><div className="save-recovery-actions">{saveState.status !== 'conflict' && <button className="secondary" onClick={() => saveQueue.current?.retry()}>Retry save</button>}<button className="secondary" onClick={() => download(new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), learning }, null, 2)], { type: 'application/json' }), 'clariqo-unsaved-study-backup.json')}>Download unsaved backup</button></div></section>}
     {notice && <div className="notice" role="status"><Check size={17} />{notice}</div>}
     {busy && <div className="busy" role="status"><LoaderCircle size={16} className="spin" />{busy}</div>}
     {page === 'Dashboard' && <><div className="welcome-card"><div><span className="pill">A CALMER WAY TO STUDY</span><h2>Your notes.<br />Your questions.<br /><em>Your next breakthrough.</em></h2><p>Bring your material. Ask until it clicks.<br />Build a study rhythm that works for you.</p><button className="primary" disabled={disabled} onClick={() => navigate(materials.length ? 'Ask AI' : 'Study Materials')}>{materials.length ? 'Continue learning' : 'Add your first PDF'}<ChevronRight size={16} /></button></div><div className="welcome-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="book-tile"><BookOpen size={76} strokeWidth={1.2} /></div><div className="float-label label-one"><Check size={13} />One idea clearer</div><div className="float-label label-two"><Sparkles size={13} />Keep going</div></div></div>

@@ -13,3 +13,6 @@
 /* Keep the later accessibility and mobile navigation improvements. */
 .icon-button{min-width:40px;min-height:40px}.primary,.secondary{min-height:42px}.map-detail h3{font-family:inherit;font-weight:600}.menu-backdrop{display:none}.sidebar{overflow-y:auto}.password-input input{min-width:0}
 @media(max-width:680px){.menu-backdrop{display:block;position:fixed;inset:67px 0 0;background:#29273545;border:0;z-index:19}.sidebar{z-index:20}.nav-item{min-height:44px}.icon-button,.text-button{min-height:44px}.field input,.field select{font-size:16px}.source-list button,.source-list a{min-height:44px}.composer textarea{font-size:16px}}
+
+/* Save failures stay visible across section changes until acknowledged by the server. */
+.save-recovery{align-items:flex-start;flex-wrap:wrap}.save-recovery>div:first-child{flex:1;min-width:220px}.save-recovery p{margin:6px 0 0}.save-recovery-actions{display:flex;gap:10px;flex-wrap:wrap}.save-recovery-actions .secondary{font-size:12px}@media(max-width:680px){.save-recovery-actions{width:100%}.save-recovery-actions .secondary{flex:1;min-height:44px}}

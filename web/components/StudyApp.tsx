@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { BookOpen, Brain, CalendarDays, ChartNoAxesCombined, Check, ChevronRight, CircleHelp, FileText, GraduationCap, House, LoaderCircle, MessageCircle, Plus, Send, Sparkles, Trash2, Upload, X, Download, ExternalLink, Menu, LogOut, Layers, GitBranch } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { studyPage, pushStudyPage, studyLoginHref } from '@/lib/study-navigation';
 import Markdown from './Markdown';
 import { fileSize } from './StudyDesk';
 import { Flashcards, MindMaps } from './StudyTools';
@@ -26,7 +28,7 @@ function download(blob: Blob, name: string) { const url = URL.createObjectURL(bl
 export default function StudyApp({ student }: { student: Student }) {
   const client = useMemo(() => browserClient(), []);
   const store = useMemo(() => cloudStudyStore(client, student.id), [client, student.id]);
-  const [page, setPage] = useState<PageName>('Dashboard');
+  const page = studyPage(useSearchParams());
   const [materials, setMaterials] = useState<Material[]>([]), [learning, setLearning] = useState<Learning>(structuredClone(EMPTY_LEARNING));
   const [ready, setReady] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [saveState, setSaveState] = useState<SaveState>({ status: 'saved', dirty: false, message: '' });
@@ -69,11 +71,12 @@ export default function StudyApp({ student }: { student: Student }) {
     return () => { live = false; if (url) URL.revokeObjectURL(url); };
   }, [preview?.id, materials, store]);
   useEffect(() => { const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || (session?.user.id && session.user.id !== student.id)) { saveQueue.current?.stop(); setReady(false); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); window.location.replace('/login'); }
+    if (event === 'SIGNED_OUT' || (session?.user.id && session.user.id !== student.id)) { saveQueue.current?.stop(); setReady(false); setMaterials([]); setLearning(structuredClone(EMPTY_LEARNING)); window.location.replace(studyLoginHref(studyPage(new URLSearchParams(window.location.search)))); }
   }); return () => subscription.unsubscribe(); }, [client, student.id]);
   useEffect(() => { if (page === 'Ask AI') bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [learning.messages, page]);
   useEffect(() => { if (!showMenu) return; const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setShowMenu(false); }; document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close); }, [showMenu]);
-  function navigate(value: PageName) { setPage(value); setShowMenu(false); setError(''); setNotice(''); }
+  function navigate(value: PageName) { pushStudyPage(value, window.location, window.history); setShowMenu(false); setError(''); setNotice(''); }
+  useEffect(() => { setShowMenu(false); setError(''); setNotice(''); }, [page]);
   async function api(body: unknown) { const r = await fetch('/api/study', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-demo-code': accessCode }, body: JSON.stringify(body) }); const data = await r.json(); if (!r.ok) throw new Error(data.error || 'The request failed. Please try again.'); return data; }
   async function addFiles(files: FileList | null) {
     if (!files || disabled) return; setError(''); setNotice(''); setBusy('Reading PDF…');

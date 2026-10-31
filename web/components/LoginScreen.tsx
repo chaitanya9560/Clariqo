@@ -1,10 +1,11 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { GraduationCap, ArrowRight, BookOpen, ShieldCheck, LoaderCircle, Eye, EyeOff, Mail } from 'lucide-react';
+import { studyReturnPath } from '@/lib/study-navigation';
 import { browserClient } from '@/lib/supabase/browser';
 import { EmailSchema, NewPasswordSchema, authMessage } from '@/lib/email-auth';
 type Mode = 'signin' | 'signup' | 'reset';
-export default function LoginScreen({ configured, failed = false, initialMode = 'signin' }: { configured: boolean; failed?: boolean; initialMode?: Mode }) {
+export default function LoginScreen({ configured, failed = false, initialMode = 'signin', returnTo = '/' }: { returnTo?: string; configured: boolean; failed?: boolean; initialMode?: Mode }) {
   const [mode, setMode] = useState<Mode>(initialMode), [busy, setBusy] = useState(false), [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [name, setName] = useState('');
   const [error, setError] = useState(failed ? 'This email link is invalid or has expired. Try signing in or request a new link.' : ''), [notice, setNotice] = useState('');
@@ -22,7 +23,7 @@ export default function LoginScreen({ configured, failed = false, initialMode = 
         const { data, error } = await client.auth.signInWithPassword({ email: parsed.data, password });
         if (error) { setError(error.code === 'invalid_credentials' ? 'The email or password is incorrect.' : authMessage(error.code)); return; }
         if (!data.user?.email_confirmed_at || !data.session) { setError('Verify your email before signing in.'); return; }
-        setPassword(''); window.location.replace('/');
+        setPassword(''); window.location.replace(studyReturnPath(returnTo));
       } else if (mode === 'signup') {
         const { error } = await client.auth.signUp({ email: parsed.data, password, options: { data: { full_name: name.trim().slice(0, 80) } } });
         if (error) { setError(authMessage(error.code)); return; }

@@ -1,0 +1,16 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { grade, progress, weakTopicsForPlan } from '../lib/domain';
+import { savedLearning } from '../lib/saved-data';
+import { EMPTY_LEARNING, type Question, type QuizResult } from '../lib/types';
+const question: Question = { question:'Where does photosynthesis occur?',options:{A:'Chloroplast',B:'Nucleus',C:'Ribosome',D:'Cell wall'},correct_answer:'A',explanation:'Chloroplasts carry out photosynthesis.',subtopic:'Photosynthesis' };
+const result=(topic:string,materialId?:string):QuizResult=>grade([question],{},topic,materialId);
+test('Biology weaknesses cannot enter a general History plan',()=>{assert.deepEqual(weakTopicsForPlan([result('Biology')],'History'),[]);assert.deepEqual(weakTopicsForPlan([result('Biology')],'Biology'),['Photosynthesis']);});
+test('same-named concepts from other subjects do not dilute matching scores',()=>{const biology=result('Biology');const history={...result('History'),correct:1,concepts:[{topic:'Photosynthesis',correct:true}]};assert.deepEqual(weakTopicsForPlan([biology,history],'History'),[]);assert.deepEqual(weakTopicsForPlan([biology,history],'Biology'),['Photosynthesis']);assert.equal(progress([biology,history]).accuracy,50);});
+test('subject matching tolerates case and separators but does not guess subject relationships',()=>{assert.deepEqual(weakTopicsForPlan([result('  Computer_Science  ')],'computer science'),['Photosynthesis']);assert.deepEqual(weakTopicsForPlan([result('Biology')],'Marine Biology'),[]);assert.deepEqual(weakTopicsForPlan([result('Biology')],'   '),[]);});
+test('PDF plans use only quizzes generated from that PDF',()=>{const bio=result('Photosynthesis','biology-pdf'),history=result('History','history-pdf');assert.deepEqual(weakTopicsForPlan([bio,history],'History','history-pdf'),['Photosynthesis']);assert.deepEqual(weakTopicsForPlan([bio],'History','history-pdf'),[]);assert.deepEqual(weakTopicsForPlan([bio],'Biology','biology-pdf'),['Photosynthesis']);});
+test('a PDF quiz cannot leak into a general plan with the same topic label',()=>assert.deepEqual(weakTopicsForPlan([result('History','biology-pdf')],'History'),[]));
+test('legacy results remain readable but cannot be assigned to a PDF by filename or topic guess',()=>{const legacy=result('Biology');assert.equal(legacy.materialId,undefined);const restored=savedLearning({...EMPTY_LEARNING,results:[legacy]});assert.deepEqual(restored.results,[legacy]);assert.deepEqual(weakTopicsForPlan(restored.results,'Biology','biology-pdf'),[]);assert.deepEqual(weakTopicsForPlan(restored.results,'Biology'),['Photosynthesis']);});
+test('quiz source identity survives storage and differs from the later selected PDF',()=>{const generated=result('Photosynthesis','biology-pdf');const restored=savedLearning({...EMPTY_LEARNING,results:[generated]});assert.equal(restored.results[0].materialId,'biology-pdf');assert.deepEqual(weakTopicsForPlan(restored.results,'History','history-pdf'),[]);});
+
+test('distinct subject symbols cannot merge C++, C# and C results',()=>{assert.deepEqual(weakTopicsForPlan([result('C++')],'C#'),[]);assert.deepEqual(weakTopicsForPlan([result('C++')],'C'),[]);assert.deepEqual(weakTopicsForPlan([result('C++')],'c++'),['Photosynthesis']);});

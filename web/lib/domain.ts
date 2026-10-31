@@ -27,14 +27,25 @@ export function materialContext(materials: Material[], selected = '', maxChars =
     return out;
   });
 }
-export function grade(questions: Question[], answers: Record<number, string>, topic: string): QuizResult {
-  return { id: crypto.randomUUID(), topic, correct: questions.filter((q, i) => answers[i] === q.correct_answer).length, total: questions.length, date: new Date().toISOString(), concepts: questions.map((q, i) => ({ topic: q.subtopic, correct: answers[i] === q.correct_answer })) };
+export function grade(questions: Question[], answers: Record<number, string>, topic: string, materialId?: string): QuizResult {
+  return { id: crypto.randomUUID(), topic, ...(materialId ? { materialId } : {}), correct: questions.filter((q, i) => answers[i] === q.correct_answer).length, total: questions.length, date: new Date().toISOString(), concepts: questions.map((q, i) => ({ topic: q.subtopic, correct: answers[i] === q.correct_answer })) };
 }
 export function progress(results: QuizResult[]) {
   const total = results.reduce((n, r) => n + r.total, 0), correct = results.reduce((n, r) => n + r.correct, 0);
   const concepts = new Map<string, { correct: number; total: number }>();
   results.flatMap(r => r.concepts).forEach(c => { const old = concepts.get(c.topic) || { correct: 0, total: 0 }; concepts.set(c.topic, { total: old.total + 1, correct: old.correct + Number(c.correct) }); });
   return { accuracy: total ? Math.round(100 * correct / total) : null, total, weak: [...concepts.entries()].filter(([, v]) => v.correct / v.total < .7).map(([topic]) => topic) };
+}
+// Without a shared PDF identity, use an exact normalised subject label rather
+// than guessing which course an unrelated quiz or subtopic belongs to.
+export function weakTopicsForPlan(results: QuizResult[], subject: string, materialId?: string): string[] {
+  const normalise = (value: string) => value.normalize('NFKC').toLowerCase().replace(/[\s_-]+/gu, ' ').trim();
+  const label = normalise(subject);
+  if (!label) return [];
+  const matching = results.filter(result => materialId
+    ? result.materialId === materialId
+    : !result.materialId && normalise(result.topic) === label);
+  return progress(matching).weak.slice(0, 20);
 }
 export function parsePlan(markdown: string, count: number): PlanDay[] {
   const matches = [...markdown.matchAll(/^#{1,4}\s+Day\s+(\d+)\s*[:–—-]\s*(.+)$/gmi)];

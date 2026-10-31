@@ -1,3 +1,4 @@
+import { weakTopicsForPlan } from '../lib/domain';
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { complete, safeHttpUrl } from '../lib/provider';
@@ -94,4 +95,15 @@ test('structured study-aid output accepts null error and refuses insufficient PD
   const good=await POST(request({action:'mindmap',topic:'Java',context:[]}));assert.equal(good.status,200);assert.equal((await good.json()).nodes.length,2);assert.ok(sent[0].response_format);
   respond(JSON.stringify({cards:[],error:'Not covered by excerpts'}));
   const bad=await POST(request({action:'flashcards',topic:'Biology',count:5,context:[{fileName:'java.pdf',page:1,text:'Java classes define objects.'}]}));assert.equal(bad.status,502);assert.match((await bad.json()).error,/could not support/);
+});
+
+
+test('History plan prompt excludes Biology weaknesses from the request builder', async () => {
+  const biology = { id:'bio-result', topic:'Biology', correct:0, total:1, date:'2026-10-31', concepts:[{topic:'Photosynthesis',correct:false}] };
+  respond(JSON.stringify({days:[{title:'Historical sources',content:'- Study primary sources for 60 minutes'}],tips:['Review notes','Use a timeline','Take breaks']}));
+  await makePlan({action:'plan',subject:'History',today:'2026-10-31',examDate:'2026-11-01',hours:1,level:'Beginner',weakTopics:weakTopicsForPlan([biology],'History'),context:[]});
+  const prompt=JSON.stringify(sent[0]);
+  assert.ok(!prompt.includes('Photosynthesis'));
+  assert.match(prompt,/not assessed/);
+  assert.match(prompt,/requested subject/);
 });

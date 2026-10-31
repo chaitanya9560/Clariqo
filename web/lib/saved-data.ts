@@ -3,7 +3,7 @@ import { DeckSchema, MindMapSchema } from './study-aids';
 import type { Learning, Material } from './types';
 const reference = z.object({ fileName: z.string().max(200), page: z.number().int().min(1).max(200) });
 const webReference = z.object({ title: z.string().max(300), url: z.string().url().refine(value => { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password; }) });
-const quizResult = z.object({ id: z.string().max(100), topic: z.string().max(200), correct: z.number().int().min(0).max(10), total: z.number().int().min(1).max(10), date: z.string().refine(value => Number.isFinite(Date.parse(value))), concepts: z.array(z.object({ topic: z.string().max(100), correct: z.boolean() })).max(10) }).refine(r => r.correct <= r.total);
+const quizResult = z.object({ id: z.string().max(100), topic: z.string().max(200), materialId: z.string().min(1).max(100).optional(), correct: z.number().int().min(0).max(10), total: z.number().int().min(1).max(10), date: z.string().refine(value => Number.isFinite(Date.parse(value))), concepts: z.array(z.object({ topic: z.string().max(100), correct: z.boolean() })).max(10) }).refine(r => r.correct <= r.total);
 export const LearningSchema = z.object({
   flashcardDecks: z.array(DeckSchema).max(10).optional(),
   mindMaps: z.array(MindMapSchema).max(5).optional(),

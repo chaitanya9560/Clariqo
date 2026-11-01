@@ -45,6 +45,6 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Operating system, browser, Node.js version (or Python for Streamlit), and commit or deployed URL if known.
+      description: Operating system, browser, Node.js version, and commit or deployed URL if known.
     validations:
       required: true

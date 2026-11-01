@@ -1,93 +1,39 @@
-# Python Bytecode & Cache
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# Dependencies and generated Next.js output
+node_modules/
+.next/
+.vercel/
+*.tsbuildinfo
+out/
 
-# Virtual Environments
-.venv/
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-
-# Environment Variables & Secrets
+# Environment variables and secrets
 .env
 .env.*
 !.env.example
-.streamlit/secrets.toml
 
-# Dynamic User Data & Vector Store
-uploads/*
-!uploads/.gitkeep
-data/*
-!data/.gitkeep
-!data/vector_store/
-data/vector_store/*
-!data/vector_store/.gitkeep
-*.faiss
-*.index
-*.pkl
-
-# Testing, Coverage & Logs
+# Test outputs, coverage and logs
 test_results/
-.pytest_cache/
-.coverage
-htmlcov/
+coverage/
 *.log
 
-# Editor & IDE Directories
+# Editor and operating-system files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Operating System Files
 .DS_Store
 Thumbs.db
-ehthumbs.db
 Desktop.ini
-
-# Local Python runtime
-.runtime/
-.model-cache/
-
-# Local audit notes (may reference the user's saved materials)
-TEST_REPORT.md
-DEEP_TEST_REPORT.md
-WEBSITE_AUDIT.md
-PDF_UPLOAD_FIX.md
-STUDY_PLAN_FORMAT_FIX.md
-CHAT_ROUTING_FIX.md
-LEARNING_FEATURE_FIXES.md
-FINAL_AUDIT_REPORT.md
-
-# Vercel / Next.js migration
-node_modules/
-.next/
-.vercel/
-*.tsbuildinfo
-# Keep the Next.js source library (the generic Python lib/ rule above excludes it).
-!web/lib/
-!web/lib/**
 
 # Supabase CLI local project cache
 supabase/.temp/
+
+# Old local Python files and personal data (never publish)
+.venv/
+.runtime/
+.model-cache/
+__pycache__/
+*.py[cod]
+.streamlit/secrets.toml
+uploads/
+data/

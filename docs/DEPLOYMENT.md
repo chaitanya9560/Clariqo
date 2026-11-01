@@ -1,11 +1,11 @@
 # Deploy Clariqo on Vercel
 
-This guide is for `vercel-migration`. The earlier Streamlit deployment remains documented on the repository's `main` branch.
+This guide is for the final Next.js website on `main`. The earlier Streamlit prototype is preserved in Git history.
 
 | Setting | Value |
 | --- | --- |
 | Repository | `chaitanya9560/Clariqo` |
-| Branch to deploy | `vercel-migration` |
+| Branch to deploy | `main` |
 | Root Directory | `web` |
 | Framework | Next.js |
 | Install | `npm ci` |
@@ -21,8 +21,8 @@ GROQ_MODEL=openai/gpt-oss-120b
 
 Optionally add `DEMO_ACCESS_CODE` for a controlled demo. Never prefix the API key with `NEXT_PUBLIC_`.
 
-Import the repository into Vercel, select the `web` root and deploy `vercel-migration`. If the initial import uses `main`, set the intended branch in the project's Git configuration or explicitly deploy from `vercel-migration`. The `web` app is not present on `main`.
+Import the repository into Vercel, select the `web` root and deploy `main`. For an existing Vercel project, select `main` as its production branch to follow the final project.
 
-After deployment, open the returned URL and test a text PDF, chat, a quiz and a plan in a browser. PDFs stay in browser storage; there are no student accounts or cross-device synchronization. The hosted URL is not verified until the deployment succeeds.
+Set the browser-safe Supabase configuration from `web/.env.example` as well, following [email login setup](EMAIL_LOGIN.md). After deployment, test sign-in, a text PDF, chat, a quiz and a plan in a browser. PDFs and learning data are private to the signed-in account. New deployments still need their own checks.
 
 For setup, limits, privacy and troubleshooting, read [the full web guide](../web/README.md). For the checks already performed, see [verification notes](VERCEL_VERIFICATION.md).

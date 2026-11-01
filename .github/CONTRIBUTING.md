@@ -1,35 +1,27 @@
-# Contributing on vercel-migration
+# Contributing to Clariqo
 
-The Vercel application is under `web/`. Run `npm ci`, `npm run typecheck`, `npm test` and `npm run build` from that directory. Keep server secrets out of client components and never use `NEXT_PUBLIC_` for API keys.
-
-For UI changes, check the affected screen on desktop and mobile in a browser. The earlier Python tests below apply to the retained Streamlit implementation, not the new Next.js app.
-
-# Retained Streamlit contribution guidance
-
-Clariqo is a local study-assistant prototype. Small fixes, clear bug reports and improvements to the documentation are welcome. Check the README's upstream licensing note before reusing or redistributing the code.
-
-## Before making a change
-
-1. Read the README and set up the project locally.
-2. Check existing issues before opening a new one.
-3. Explain the problem and the expected result. Keep each change focused.
+The Next.js application is under `web/`. Read the README and the upstream credit before making changes.
 
 ## Local checks
 
-Run from the project root:
+Run from `web/`:
 
 ```sh
-python -m unittest discover -s tests -v
+npm ci
+npm run typecheck
+npm test
+npm run build
 ```
 
-For interface changes, also check the affected page in the browser. Describe what you checked and include a screenshot with private information removed when useful.
+For UI changes, check the affected screen on desktop and mobile. Use synthetic study material and remove private information from screenshots.
 
 ## Pull requests
 
 - Explain the problem, the change and how you checked it.
 - Add a regression test for a meaningful behavior change when practical.
-- Update documentation if setup or behavior changes.
-- Keep tests and fixtures under `tests/`; use synthetic study material.
-- Never commit API keys, `.env`, personal PDFs, saved learning data, caches or generated test reports.
+- Update documentation when setup or behavior changes.
+- Keep automated tests under `web/tests/` and manual checks under `web/tests/manual/`.
+- Never commit API keys, `.env` files, personal PDFs, saved learning data, caches or generated reports.
+- Keep server secrets out of client components; never use `NEXT_PUBLIC_` for secret API keys.
 
-The offline test suite uses mocked AI calls. A passing suite does not confirm live provider access or factual answer quality. Do not send someone else's study material to an external provider without their permission.
+Offline tests use mocked AI calls. Passing tests does not prove live provider access or factual answer quality. Do not send someone else's study material to an external provider without permission.

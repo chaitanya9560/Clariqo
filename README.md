@@ -7,11 +7,11 @@
 <img alt="Vercel deployment target" src="https://img.shields.io/badge/Target-Vercel-171717?logo=vercel">
 </p>
 
-## Vercel migration branch
+## Current website
 
-This branch contains a working Next.js version of Clariqo under **`web/`**. The original Python/Streamlit version is preserved on [`main`](https://github.com/chaitanya9560/Clariqo/tree/main).
+The current project contains the Next.js website under **`web/`**. The earlier Python/Streamlit prototype is preserved in [Git history](https://github.com/chaitanya9560/Clariqo/tree/bb4cc2a).
 
-**Vercel import settings:** repository `chaitanya9560/Clariqo` · branch `vercel-migration` · root directory **`web`** · framework **Next.js**.
+**Vercel import settings:** repository `chaitanya9560/Clariqo` · branch `main` · root directory **`web`** · framework **Next.js**.
 
 Read the [complete setup and deployment guide](web/README.md) before deploying. Set `GROQ_API_KEY` and `GROQ_MODEL` in Vercel's server environment variables; never expose the key through a `NEXT_PUBLIC_` variable.
 
@@ -49,7 +49,7 @@ This branch uses browser-local BM25-style text retrieval, **not FAISS or Sentenc
 ## Run locally
 
 ```sh
-git clone --branch vercel-migration https://github.com/chaitanya9560/Clariqo.git
+git clone --branch main https://github.com/chaitanya9560/Clariqo.git
 cd Clariqo/web
 npm ci
 cp .env.example .env.local
@@ -66,7 +66,7 @@ npm test
 npm run build
 ```
 
-The study-desk release passes **82 automated tests**, strict TypeScript checks and a production build. Real Groq tests covered PDF flashcards, general-topic flashcards and a 12-concept mind map with validated excerpt references. Browser review covered desktop/mobile UI previews and local login controls. Existing account records remain compatible with the optional new study-tool fields.
+The final source passes **127 automated tests** and strict TypeScript checks. The last production build also passed; the cleanup removed only the older Python app and generated files. Real Groq tests covered PDF flashcards, general-topic flashcards and a 12-concept mind map with validated excerpt references. Browser review covered desktop/mobile UI previews and local login controls. Existing account records remain compatible with the optional new study-tool fields.
 
 These checks do not guarantee factual correctness of AI content. Full signed-in browser testing and inbox delivery were not repeated for this release. Internet search was not re-certified in this pass because earlier diagnostics hit provider limits. The last Supabase advisor check flagged disabled leaked-password protection, which requires a paid plan; this project remains on Free. See the [website audit](docs/WEBSITE_TEST_2026-10-31.md), [UI review](docs/STUDY_DESK_UI.md) and [study-tool notes](docs/STUDY_TOOLS.md) for test boundaries.
 
@@ -82,7 +82,7 @@ web/
 └── package-lock.json    # Reproducible Node dependencies
 ```
 
-The Python files at the repository root remain available for the earlier local/Streamlit app. Vercel builds only the selected `web` root; it does not install the Python requirements.
+The old Python source, requirements and tests have been removed from this branch. Vercel builds the `web` root. Database migrations remain under `supabase/`, and setup and review notes remain under `docs/`.
 
 ## Limits and privacy
 

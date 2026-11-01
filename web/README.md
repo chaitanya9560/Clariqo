@@ -1,6 +1,6 @@
 # Clariqo for Vercel
 
-A working Next.js study app, not a landing page. This version lives in `web/` on the `vercel-migration` branch. The original Streamlit app remains on `main`.
+A working Next.js study app, not a landing page. This version lives in `web/` on `main`. The earlier Streamlit app is preserved in Git history.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ Open http://localhost:3000. For a production run, use `npm run build` then `npm 
 ## Deploy on Vercel
 
 1. Import `chaitanya9560/Clariqo` from GitHub.
-2. Deploy the **`vercel-migration`** branch. If the importer starts from `main`, change the project's production branch or explicitly create a deployment from `vercel-migration` before deploying this app.
+2. Deploy the **`main`** branch. Existing projects that track `vercel-migration` can keep working; select `main` as the production branch to follow the final project.
 3. Set **Root Directory** to **`web`**. Framework preset: **Next.js**.
 4. Add server environment variables:
 
@@ -42,9 +42,9 @@ Never use `NEXT_PUBLIC_GROQ_API_KEY`, upload `.env.local` or publish the key in 
 
 Vercel Hobby and the provider's free access have usage limits. This app does not enable paid billing. In-memory rate limits are best-effort and reset across serverless instances; use `DEMO_ACCESS_CODE` for a controlled demo. A public URL is not a promise of unlimited usage.
 
-## What changed from Streamlit?
+## Current architecture
 
-| Area | This Vercel branch |
+| Area | Current website |
 | --- | --- |
 | Interface | React / Next.js App Router |
 | Server | Stateless Node.js route at `/api/study` |

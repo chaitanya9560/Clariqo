@@ -1,95 +1,174 @@
-<p align="center"><img src="docs/assets/clariqo-banner.svg" alt="Clariqo — Turn study material into understanding" width="100%"></p>
-<p align="center"><strong>Your notes, questions and revision, together.</strong></p>
 <p align="center">
-<img alt="Next.js" src="https://img.shields.io/badge/Next.js-App_Router-171717?logo=nextdotjs">
-<img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&amp;logoColor=white">
-<img alt="AI provider Groq" src="https://img.shields.io/badge/AI-Groq-F55036">
-<img alt="Vercel deployment target" src="https://img.shields.io/badge/Target-Vercel-171717?logo=vercel">
+  <img src="docs/assets/clariqo-banner.svg" alt="Clariqo — Turn study material into understanding" width="100%">
+</p>
+<p align="center"><strong>Your course material. Clear explanations. Better practice.</strong></p>
+<p align="center">An AI study workspace for reading PDFs, asking questions and planning revision.</p>
+<p align="center">
+  <a href="https://clariqo.vercel.app/">Open Clariqo</a> ·
+  <a href="#quick-start">Run locally</a> ·
+  <a href="docs/DEPLOYMENT.md">Deploy</a> ·
+  <a href="https://github.com/chaitanya9560/Clariqo/issues/new/choose">Report an issue</a>
+</p>
+<p align="center">
+  <img alt="Next.js App Router" src="https://img.shields.io/badge/Next.js-App_Router-171717?logo=nextdotjs">
+  <img alt="React" src="https://img.shields.io/badge/React-UI-7058DF?logo=react&amp;logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&amp;logoColor=white">
+  <img alt="AI provider Groq" src="https://img.shields.io/badge/AI-Groq-7058DF">
+  <img alt="Supabase Auth and Storage" src="https://img.shields.io/badge/Supabase-Auth_%26_Storage-7058DF?logo=supabase&amp;logoColor=white">
 </p>
 
-## Current website
+## What is Clariqo?
 
-The current project contains the Next.js website under **`web/`**. The earlier Python/Streamlit prototype is preserved in [Git history](https://github.com/chaitanya9560/Clariqo/tree/bb4cc2a).
+Clariqo brings study material, explanations and revision tools into one website. Upload a PDF, ask about a concept, practise with a quiz, then revisit difficult topics through flashcards, mind maps or a study plan.
 
-**Vercel import settings:** repository `chaitanya9560/Clariqo` · branch `main` · root directory **`web`** · framework **Next.js**.
+The current application is a full-stack **Next.js** website in `web/`. **React** powers the interface, **Node.js API routes** handle AI requests, **Groq** generates content, and **Supabase** handles account access and private saved data.
 
-Read the [complete setup and deployment guide](web/README.md) before deploying. Set `GROQ_API_KEY` and `GROQ_MODEL` in Vercel's server environment variables; never expose the key through a `NEXT_PUBLIC_` variable.
+<p align="center"><img src="docs/assets/dashboard.jpg" alt="Purple Clariqo dashboard with sample documents, activity and study-plan progress" width="100%"></p>
 
-## What you can do
+*Interface previews use synthetic study content. They show the purple design; some labels may differ from the latest release.*
 
-| Page | Features |
+## Study features
+
+| Feature | What it does |
 | --- | --- |
-| Dashboard | Saved documents, study-plan days, practice topics and account totals |
-| Study Materials | Read PDFs up to 20 MB, select, preview, download and reuse them |
-| Ask AI | Normal conversation, PDF-first answers, PDF-only mode and internet search |
-| Quiz | 5 or 10 questions, difficulty, explanations and scored answers |
-| Flashcards | Saved 5- or 10-card decks, answer reveal and review progress |
-| Mind Maps | Expandable concept trees, explanations, PDF references and outline downloads |
-| My Progress | Saved quiz scores and subtopics that need more practice |
-| Study Plan | Up to 14 days, exam date, study time, level, weak topics and a completion checklist |
+| **PDF library** | Upload text PDFs up to 20 MB, preview, download and reuse saved material. |
+| **Ask AI** | Chat normally, ask PDF-only questions or search the internet with returned source links. |
+| **Quizzes** | Generate 5 or 10 questions, choose difficulty, review explanations and save scores. |
+| **Flashcards** | Reveal answers, mark cards for review and keep progress in saved decks. |
+| **Mind maps** | Explore expandable concepts, read explanations and download an outline. |
+| **Progress** | See quiz accuracy and subtopics that need more practice. |
+| **Study plans** | Plan up to 14 days using the exam date, available hours, level and relevant weak topics. |
+| **Private accounts** | Sign in with verified email/password and keep PDFs and learning data tied to your account. |
 
-Email/password sign-in requires email verification. PDFs are saved in private Supabase Storage; chat, quiz results, plans, flashcards and mind maps are saved to the signed-in account. Google sign-in is deferred. Custom SMTP is configured. Real inbox delivery still needs a sign-up check.
+<table>
+  <tr>
+    <td width="50%"><strong>Ask AI</strong><br><img src="docs/assets/chat.jpg" alt="PDF-based Java explanation in Clariqo's purple chat interface"></td>
+    <td width="50%"><strong>Quiz practice</strong><br><img src="docs/assets/quiz.jpg" alt="Clariqo quiz controls and a sample multiple-choice question"></td>
+  </tr>
+</table>
 
-## Architecture
+<details>
+<summary><strong>See flashcards and mind maps</strong></summary>
+
+<table>
+  <tr>
+    <td width="50%"><strong>Flashcards</strong><br><img src="docs/assets/flashcards.jpg" alt="Clariqo flashcard answer reveal with review controls"></td>
+    <td width="50%"><strong>Mind maps</strong><br><img src="docs/assets/mind-map.jpg" alt="Clariqo mind map showing connected Java concepts"></td>
+  </tr>
+</table>
+
+</details>
+
+## How it works
 
 ```mermaid
 flowchart LR
-    PDF[Study PDF] --> Browser[Browser PDF.js extraction]
-    Browser --> Search[Local text retrieval]
-    Browser --> Storage[Private Supabase account storage]
-    Search --> API[Bounded text + question]
-    API --> Server[Next.js server route]
-    Server --> Groq[Groq API]
-    Groq --> Answer[Answers / quizzes / plans / study tools]
-    Answer --> Storage
+    PDF[Study PDF] --> Browser[Browser: PDF.js extraction]
+    Browser --> Retrieval[BM25-style passage search]
+    Retrieval --> API[Next.js API: auth and validation]
+    Question[Question or study task] --> API
+    API --> Groq[Groq AI]
+    Groq --> API
+    API --> UI[Answer or study tool]
+    Browser --> Storage[Private PDF storage]
+    UI --> Saved[Account learning data]
 ```
 
-This branch uses browser-local BM25-style text retrieval, **not FAISS or Sentence Transformers**. That avoids loading a Python embedding runtime into Vercel Functions. The original PDF is extracted in the browser and saved directly to private Supabase Storage; selected excerpts and prompts go to Groq through a server-only API key. PDF-only answers use supplied page references. Web fallback does not send the PDF or chat history to the search-enabled request.
+1. **Read:** PDF.js extracts selectable text in the browser and keeps page references.
+2. **Find:** BM25-style keyword scoring selects relevant passages for a PDF question.
+3. **Generate:** A Node.js API route checks the request and calls Groq with bounded context.
+4. **Study:** The website displays the answer, quiz, cards, map or plan. Account data is saved under ownership policies.
 
-## Run locally
+The Groq key stays on the server. Original PDFs upload directly to private Supabase Storage; selected excerpts go to Groq for PDF-based generation. Search-enabled requests use the current question without the PDF excerpts or chat history. The current version uses lexical retrieval rather than FAISS or an embedding runtime.
+
+## Tech stack
+
+| Layer | Tools |
+| --- | --- |
+| Frontend | Next.js App Router, React, TypeScript, CSS, Lucide icons |
+| Backend | Next.js API routes on Node.js, Zod validation |
+| AI | Groq API, configured server-side model |
+| PDF and search | PDF.js, browser-local BM25-style retrieval |
+| Formatted answers | React Markdown, KaTeX |
+| Accounts and data | Supabase Auth, PostgreSQL, private Storage |
+| Development and hosting | Git, GitHub, Vercel |
+
+## Quick start
+
+Use **Node.js 22 or 24** and npm.
 
 ```sh
-git clone --branch main https://github.com/chaitanya9560/Clariqo.git
+git clone https://github.com/chaitanya9560/Clariqo.git
 cd Clariqo/web
 npm ci
 cp .env.example .env.local
 ```
 
-Add your Groq key and Supabase publishable configuration to `.env.local` (see the [account setup guide](docs/EMAIL_LOGIN.md)), then run `npm run dev` and open http://localhost:3000.
+Fill in `.env.local` using your own settings:
 
-## Verification
+| Variable | Purpose |
+| --- | --- |
+| `GROQ_API_KEY` | Server-only Groq API key |
+| `GROQ_MODEL` | Model name; the example uses `openai/gpt-oss-120b` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser-safe Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe publishable key |
+| `DEMO_ACCESS_CODE` | Optional additional code for controlled demos |
+
+Follow the [account setup guide](docs/EMAIL_LOGIN.md) to configure the database, private storage and verified email access. Never use a service-role key in the browser or prefix the Groq key with `NEXT_PUBLIC_`.
 
 ```sh
-cd web
+npm run dev
+```
+
+Open **http://localhost:3000**. Production hosting instructions are in the [deployment guide](docs/DEPLOYMENT.md).
+
+> **Vercel settings:** branch `main` · root directory `web` · framework Next.js. Add the real environment values in Vercel; private `.env` files are not committed.
+
+## Project structure
+
+```text
+Clariqo/
+├── web/
+│   ├── app/             # Pages, styles and server routes
+│   ├── components/      # Chat, quizzes and study tools
+│   ├── lib/             # Retrieval, AI, storage and validation
+│   ├── tests/           # Automated tests and manual checks
+│   ├── .env.example     # Placeholder settings
+│   └── package-lock.json
+├── supabase/migrations/ # Account-data and file-access policies
+├── docs/                # Setup, feature notes and reviews
+└── .github/             # Contribution, security and issue guides
+```
+
+## Checks and current limits
+
+Run from `web/`:
+
+```sh
 npm run typecheck
 npm test
 npm run build
 ```
 
-The final source passes **127 automated tests** and strict TypeScript checks. The last production build also passed; the cleanup removed only the older Python app and generated files. Real Groq tests covered PDF flashcards, general-topic flashcards and a 12-concept mind map with validated excerpt references. Browser review covered desktop/mobile UI previews and local login controls. Existing account records remain compatible with the optional new study-tool fields.
+The final source handoff passed **127 automated tests** and TypeScript checks. The previous production build also passed. These are source checks, not a guarantee of AI accuracy or complete signed-in browser coverage. See the [handoff](docs/FINAL_SOURCE_HANDOFF.md) and [latest full review](docs/WEBSITE_REVIEW_AFTER_FOUR_FIXES_2026-10-31.md) for the exact checks and remaining issues.
 
-These checks do not guarantee factual correctness of AI content. Full signed-in browser testing and inbox delivery were not repeated for this release. Internet search was not re-certified in this pass because earlier diagnostics hit provider limits. The last Supabase advisor check flagged disabled leaked-password protection, which requires a paid plan; this project remains on Free. See the [website audit](docs/WEBSITE_TEST_2026-10-31.md), [UI review](docs/STUDY_DESK_UI.md) and [study-tool notes](docs/STUDY_TOOLS.md) for test boundaries.
+- Text-based PDFs only; scanned documents need OCR, which is not included.
+- Five PDFs / 50 MB total; each PDF is limited to 20 MB, 200 pages and 300,000 extracted characters.
+- Plans cover up to 14 days. Card review uses self-ratings, not automatic spaced repetition.
+- Keyword retrieval can miss paraphrases and equations. AI explanations and quiz keys can be wrong.
+- Provider and hosting quotas apply. Internet mode needs working search support; unlimited use is not promised.
+- File and database deletion are separate operations; interrupted deletion can require recovery.
+- Failed saves offer retry and a JSON backup. Unsaved changes can still be lost if the page is closed.
+- Google sign-in is deferred. Email delivery and full account flows still need checks for each new deployment.
 
-## Project structure
+## Guides and feedback
 
-```text
-web/
-├── app/                 # Next.js pages, styles and server API
-├── components/          # Interactive eight-page study interface
-├── lib/                 # PDF reading, storage, retrieval, AI and validation
-├── tests/               # Domain, API and browser-storage tests
-├── .env.example         # Placeholder server settings
-└── package-lock.json    # Reproducible Node dependencies
-```
+[Local setup](web/README.md) · [Deployment](docs/DEPLOYMENT.md) · [Email accounts](docs/EMAIL_LOGIN.md) · [Study tools](docs/STUDY_TOOLS.md) · [Contributing](.github/CONTRIBUTING.md) · [Security](.github/SECURITY.md)
 
-The old Python source, requirements and tests have been removed from this branch. Vercel builds the `web` root. Database migrations remain under `supabase/`, and setup and review notes remain under `docs/`.
+Found a problem? [Open an issue](https://github.com/chaitanya9560/Clariqo/issues/new/choose) with clear steps and a screenshot, with private details removed.
 
-## Limits and privacy
+## Credit and project history
 
-Text-based PDFs only; no OCR. Text retrieval can miss paraphrases and equations. AI output can be wrong. Account data is protected with database and storage ownership policies. Sign out on shared devices. Old browser-only data is kept in IndexedDB and is not automatically copied into an account. Provider and Supabase quotas apply; unlimited usage is not promised. Storage and database deletions are separate operations; retry if a network failure interrupts clearing data. A shared demo access code is optional; rate limits are best-effort across serverless instances.
+Clariqo began from [ug8yogesh/AI-Learning-Study-Assistant](https://github.com/ug8yogesh/AI-Learning-Study-Assistant). The earlier Python/Streamlit prototype is preserved in [Git history](https://github.com/chaitanya9560/Clariqo/tree/bb4cc2a); the current branch contains the Next.js implementation.
 
-## Feedback and credit
-
-Use the [issue forms](https://github.com/chaitanya9560/Clariqo/issues/new/choose) for bugs or ideas. Remove private study material and credentials before posting.
-
-Clariqo began from [ug8yogesh/AI-Learning-Study-Assistant](https://github.com/ug8yogesh/AI-Learning-Study-Assistant). The downloaded upstream source had no license file, and this repository does not assert a new license for that code. The Vercel migration is separate from the original implementation and retains that project credit.
+The downloaded upstream source had no license file. This repository retains that credit and does not assert a new license for the upstream code.

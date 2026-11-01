@@ -11,10 +11,13 @@ body:
       label: Affected area
       options:
         - Setup or startup
+        - Login or account
         - Dashboard
         - Study Materials
         - Ask AI
         - Quiz
+        - Flashcards
+        - Mind Maps
         - My Progress
         - Study Plan
         - Other

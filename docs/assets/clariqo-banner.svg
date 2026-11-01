@@ -3,7 +3,7 @@
   <desc id="desc">Purple Clariqo banner with a book and a learning loop. Read, ask, practise, improve.</desc>
   <defs>
     <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#171333"/><stop offset="1" stop-color="#363085"/></linearGradient>
-    <linearGradient id="accent"><stop stop-color="#a4a0ff"/><stop offset="1" stop-color="#66e3d1"/></linearGradient>
+    <linearGradient id="accent"><stop stop-color="#a4a0ff"/><stop offset="1" stop-color="#c7baff"/></linearGradient>
   </defs>
   <rect width="1280" height="400" rx="24" fill="url(#bg)"/>
   <circle cx="1180" cy="50" r="235" fill="#9b8aff" opacity=".07"/>
@@ -17,8 +17,8 @@
     <circle r="110" stroke="#8f87ff" stroke-width="2" opacity=".4"/>
     <path d="M-76-84 A112 112 0 0 1 105-35" stroke="#9c96ff" stroke-width="5"/>
     <path d="m92-42 15 11 5-18" stroke="#9c96ff" stroke-width="5"/>
-    <path d="M76 84 A112 112 0 0 1-105 35" stroke="#66e3d1" stroke-width="5"/>
-    <path d="m-92 42-15-11-5 18" stroke="#66e3d1" stroke-width="5"/>
+    <path d="M76 84 A112 112 0 0 1-105 35" stroke="#c7baff" stroke-width="5"/>
+    <path d="m-92 42-15-11-5 18" stroke="#c7baff" stroke-width="5"/>
     <path d="M0-39 Q-33-58-65-45 V44 Q-30 32 0 51 Q30 32 65 44 V-45 Q33-58 0-39 V51" stroke="#eeeaff" stroke-width="4" fill="#29245c"/>
     <path d="m-47-20 28 4m-28 16 28 4m38-20 28-4M19 4l28-4" stroke="#9e97e2" stroke-width="3"/>
   </g>
